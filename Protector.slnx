@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Protector.Application/Protector.Application.csproj" />
+  <Project Path="Protector.CLI/Protector.CLI.csproj" />
+  <Project Path="Protector.Domain/Protector.Domain.csproj" />
+  <Project Path="Protector.Infrastructure/Protector.Infrastructure.csproj" />
+  <Project Path="Protector.Tests/Protector.Tests.csproj" />
+</Solution>
