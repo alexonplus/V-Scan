@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Protector.Core\Protector.Core.csproj" />
     <ProjectReference Include="..\Protector.Application\Protector.Application.csproj" />
     <ProjectReference Include="..\Protector.Infrastructure\Protector.Infrastructure.csproj" />
   </ItemGroup>
