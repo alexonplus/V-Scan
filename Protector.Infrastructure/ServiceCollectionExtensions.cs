@@ -5,7 +5,7 @@ using Protector.Infrastructure.Analyzers.Http;
 using Protector.Infrastructure.Analyzers.Static;
 using Protector.Infrastructure.Crawler;
 
-namespace Protector.CLI;
+namespace Protector.Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
