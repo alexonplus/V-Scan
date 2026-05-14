@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Protector.Application.DTOs;
 using Protector.Application.UseCases;
-using Protector.CLI;
+using Protector.Infrastructure;
 using Protector.CLI.Reports;
 using Spectre.Console;
 
