@@ -11,9 +11,10 @@ namespace Protector.API.Hubs;
 /// </summary>
 public sealed class ScanHub : Hub
 {
-    // Called automatically when a client disconnects
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
+    // React calls this after connecting to subscribe to a specific scan's events
+    public async Task JoinScan(string scanId) =>
+        await Groups.AddToGroupAsync(Context.ConnectionId, scanId);
+
+    public override async Task OnDisconnectedAsync(Exception? exception) =>
         await base.OnDisconnectedAsync(exception);
-    }
 }
