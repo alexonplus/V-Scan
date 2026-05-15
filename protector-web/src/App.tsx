@@ -20,6 +20,7 @@ export default function App() {
   const [url, setUrl] = useState('')
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
   const { status, progress, result, startScan, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
@@ -29,6 +30,7 @@ export default function App() {
 
   const handleScan = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setActiveFilter(null)
     if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined)
   }
 
@@ -191,11 +193,23 @@ export default function App() {
                     {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => {
                       const cfg = SEVERITY_CONFIG[sev]
                       const count = result[sev.toLowerCase() as keyof typeof result] as number
+                      const isActive = activeFilter === sev
                       return (
-                        <div key={sev} className={`glass-card rounded-[1.5rem] p-6 border ${cfg.border} flex flex-col items-center hover:-translate-y-1 transition-transform`}>
+                        <motion.button
+                          key={sev}
+                          whileHover={{ y: -4 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setActiveFilter(isActive ? null : sev)}
+                          className={`glass-card rounded-[1.5rem] p-6 border flex flex-col items-center transition-all cursor-pointer ${
+                            isActive
+                              ? `${cfg.border} ${cfg.glow} ring-1 ring-inset ${cfg.border}`
+                              : 'border-white/5 hover:border-white/20'
+                          }`}
+                        >
                           <div className={`text-3xl font-black ${cfg.color} mb-2`}>{count}</div>
-                          <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">{sev}</div>
-                        </div>
+                          <div className={`text-[10px] font-black uppercase tracking-[0.3em] ${isActive ? cfg.color : 'text-white/30'}`}>{sev}</div>
+                          {isActive && <div className={`mt-2 w-1.5 h-1.5 rounded-full ${cfg.color} bg-current animate-pulse`} />}
+                        </motion.button>
                       )
                     })}
                   </div>
@@ -220,8 +234,20 @@ export default function App() {
               </div>
 
               {/* Vulnerabilities */}
+              {activeFilter && (
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-white/40">Filtered by:</span>
+                  <span className={`text-xs font-bold px-3 py-1 rounded-full border ${SEVERITY_CONFIG[activeFilter].border} ${SEVERITY_CONFIG[activeFilter].color} ${SEVERITY_CONFIG[activeFilter].bg}`}>
+                    {activeFilter}
+                  </span>
+                  <button onClick={() => setActiveFilter(null)} className="text-xs text-white/30 hover:text-white/60 transition-colors ml-1">
+                    ✕ Clear
+                  </button>
+                </div>
+              )}
               <div className="space-y-14 py-4">
                 {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => {
+                  if (activeFilter && activeFilter !== sev) return null
                   const vulns = result.vulnerabilities.filter((v: Vulnerability) => v.severity === sev)
                   if (!vulns.length) return null
                   const cfg = SEVERITY_CONFIG[sev]
