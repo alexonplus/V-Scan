@@ -1,20 +1,31 @@
-import { useState } from 'react'
-import { useScan } from './useScan'
-import type { Vulnerability } from './types'
+import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import {
+  Shield, Terminal, Search, AlertTriangle, Info as InfoIcon,
+  ChevronDown, RefreshCcw, Zap, Lock, Globe,
+  Activity, Cpu, Radar
+} from 'lucide-react'
+import { useScan } from './services/scanService'
+import type { Vulnerability, Severity } from './types'
 
-const SEVERITY_CONFIG = {
-  Critical: { color: 'text-red-400',    bg: 'bg-red-900/30',    border: 'border-red-700',    dot: '✖' },
-  High:     { color: 'text-orange-400', bg: 'bg-orange-900/30', border: 'border-orange-700', dot: '●' },
-  Medium:   { color: 'text-yellow-400', bg: 'bg-yellow-900/30', border: 'border-yellow-700', dot: '◆' },
-  Low:      { color: 'text-blue-400',   bg: 'bg-blue-900/30',   border: 'border-blue-700',   dot: '◇' },
-  Info:     { color: 'text-gray-400',   bg: 'bg-gray-800/30',   border: 'border-gray-600',   dot: '○' },
+const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: string; glow: string; icon: React.ElementType }> = {
+  Critical: { color: 'text-neon-accent',    bg: 'bg-neon-accent/10',    border: 'border-neon-accent/40',    glow: 'shadow-[0_0_15px_rgba(255,0,200,0.3)]',  icon: AlertTriangle },
+  High:     { color: 'text-orange-400',     bg: 'bg-orange-500/10',     border: 'border-orange-500/40',     glow: 'shadow-[0_0_15px_rgba(251,146,60,0.3)]', icon: AlertTriangle },
+  Medium:   { color: 'text-yellow-400',     bg: 'bg-yellow-500/10',     border: 'border-yellow-500/40',     glow: 'shadow-[0_0_15px_rgba(250,204,21,0.3)]', icon: AlertTriangle },
+  Low:      { color: 'text-neon-primary',   bg: 'bg-neon-primary/10',   border: 'border-neon-primary/40',   glow: 'shadow-[0_0_15px_rgba(0,255,157,0.3)]',  icon: InfoIcon },
+  Info:     { color: 'text-neon-secondary', bg: 'bg-neon-secondary/10', border: 'border-neon-secondary/40', glow: 'shadow-[0_0_15px_rgba(0,209,255,0.3)]',  icon: InfoIcon },
 }
 
 export default function App() {
   const [url, setUrl] = useState('')
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const { status, progress, result, error, startScan, reset } = useScan()
+  const { status, progress, result, startScan, reset } = useScan()
+  const terminalEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [progress])
 
   const handleScan = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -22,166 +33,308 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#e6edf3] p-6 max-w-4xl mx-auto">
+    <div className="relative min-h-screen font-sans">
+      {status === 'running' && <div className="scanning-overlay" />}
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-red-400 tracking-tight">V-Scan</h1>
-        <p className="text-[#8b949e] mt-1">Web Vulnerability Scanner</p>
-      </div>
-
-      {/* Scan Form */}
-      {status === 'idle' && (
-        <form onSubmit={handleScan} className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 mb-6">
-          <h2 className="text-lg font-semibold mb-4">New Scan</h2>
-          <div className="mb-4">
-            <label className="block text-sm text-[#8b949e] mb-1">Target URL *</label>
-            <input
-              type="url"
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder="https://example.com"
-              required
-              className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-2.5
-                         text-[#e6edf3] placeholder-[#484f58] focus:outline-none
-                         focus:border-red-500 transition-colors"
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-sm text-[#8b949e] mb-1">
-              Source code path <span className="text-[#484f58]">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={sourcePath}
-              onChange={e => setSourcePath(e.target.value)}
-              placeholder="C:\path\to\your\project"
-              className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-2.5
-                         text-[#e6edf3] placeholder-[#484f58] focus:outline-none
-                         focus:border-red-500 transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 rounded-lg transition-colors"
-          >
-            Start Scan
-          </button>
-        </form>
-      )}
-
-      {/* Progress */}
-      {status === 'running' && (
-        <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-            <h2 className="text-lg font-semibold">Scanning {url}...</h2>
-          </div>
-          <div className="bg-[#0d1117] rounded-lg p-4 h-48 overflow-y-auto font-mono text-sm">
-            {progress.length === 0
-              ? <span className="text-[#484f58]">Starting...</span>
-              : progress.map((msg, i) => (
-                <div key={i} className="text-[#8b949e] py-0.5">
-                  <span className="text-red-400">»</span> {msg}
-                </div>
-              ))
-            }
-          </div>
-        </div>
-      )}
-
-      {/* Error */}
-      {status === 'error' && (
-        <div className="bg-red-900/20 border border-red-700 rounded-xl p-6 mb-6">
-          <h2 className="text-red-400 font-semibold mb-2">Scan Failed</h2>
-          <p className="text-[#8b949e] text-sm">{error}</p>
-          <button onClick={reset} className="mt-4 px-4 py-2 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm transition-colors">
-            Try Again
-          </button>
-        </div>
-      )}
-
-      {/* Results */}
-      {status === 'completed' && result && (
-        <div>
-          {/* Summary */}
-          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-            {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => (
-              <div key={sev} className={`${SEVERITY_CONFIG[sev].bg} border ${SEVERITY_CONFIG[sev].border} rounded-xl p-4 text-center`}>
-                <div className={`text-2xl font-bold ${SEVERITY_CONFIG[sev].color}`}>
-                  {result[sev.toLowerCase() as keyof typeof result] as number}
-                </div>
-                <div className="text-xs text-[#8b949e] mt-1">{sev}</div>
+      <div className="max-w-5xl mx-auto px-6 py-12 md:px-12 relative z-10">
+        {/* Header */}
+        <header className="mb-16 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-4">
+            <div className="relative">
+              <div className="absolute inset-0 bg-neon-primary blur-xl opacity-20 animate-pulse" />
+              <div className="relative p-3 glass-card rounded-2xl border border-neon-primary/30">
+                <Shield className="w-10 h-10 text-neon-primary neon-text-primary" />
               </div>
-            ))}
-            <div className="bg-red-900/20 border border-red-700 rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-red-400">{result.riskScore}</div>
-              <div className="text-xs text-[#8b949e] mt-1">Risk Score</div>
             </div>
-          </div>
+            <div>
+              <h1 className="text-5xl font-black tracking-[calc(-0.06em)] text-white uppercase italic leading-none">
+                V-SCAN<span className="text-neon-primary neon-text-primary">_</span>
+              </h1>
+              <p className="text-white/40 text-xs font-mono uppercase tracking-[0.3em] mt-2 italic font-bold">Web Vulnerability Scanner</p>
+            </div>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+            <div className="flex items-center gap-2 text-xs font-mono text-neon-secondary neon-text-secondary uppercase tracking-widest bg-neon-secondary/5 border border-neon-secondary/20 px-4 py-2 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-neon-secondary animate-pulse shadow-[0_0_8px_var(--color-neon-secondary)]" />
+              System Ready
+            </div>
+          </motion.div>
+        </header>
 
-          <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-4 mb-6 text-sm text-[#8b949e]">
-            <span className="text-[#e6edf3] font-medium">{result.targetUrl}</span>
-            <span className="mx-2">·</span>{result.scannedUrls.length} URLs
-            <span className="mx-2">·</span>{result.totalVulnerabilities} vulnerabilities
-          </div>
+        <AnimatePresence mode="wait">
+          {/* IDLE — Scan Form */}
+          {status === 'idle' && (
+            <motion.div key="idle" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 1.02, filter: 'blur(10px)' }}
+              className="glass-card neon-border rounded-[2.5rem] p-10 md:p-16 relative shadow-2xl overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-neon-primary/10 blur-[120px] pointer-events-none" />
+              <div className="max-w-2xl mx-auto text-center mb-12">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.2em] text-white/60 mb-6">
+                  <Radar className="w-3 h-3 text-neon-secondary" />
+                  System Identification Ready
+                </motion.div>
+                <h2 className="text-4xl font-bold text-white mb-4 tracking-tight leading-tight">
+                  Initiate Secure <br />
+                  <span className="bg-gradient-to-r from-neon-primary to-neon-secondary bg-clip-text text-transparent italic">Cyber-Surface Assessment</span>
+                </h2>
+                <p className="text-white/50 text-lg leading-relaxed font-medium">
+                  Scan for host integrity, architectural leaks, and algorithmic vulnerabilities.
+                </p>
+              </div>
 
-          {/* Vuln list */}
-          {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => {
-            const vulns = result.vulnerabilities.filter(v => v.severity === sev)
-            if (!vulns.length) return null
-            const cfg = SEVERITY_CONFIG[sev]
-            return (
-              <div key={sev} className="mb-4">
-                <h3 className={`${cfg.color} font-semibold mb-2`}>{cfg.dot} {sev} ({vulns.length})</h3>
-                <div className="space-y-2">
-                  {vulns.map(v => (
-                    <VulnCard key={v.id} vuln={v} isOpen={expanded === v.id}
-                      onToggle={() => setExpanded(expanded === v.id ? null : v.id)} />
-                  ))}
+              <form onSubmit={handleScan} className="max-w-3xl mx-auto space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Target URL</label>
+                    <div className="relative group">
+                      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-primary/0 via-neon-primary to-neon-primary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+                      <Globe className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-primary transition-colors" />
+                      <input type="url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://secure-target.io" required
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Source Code Path <span className="text-white/20 normal-case tracking-normal font-normal">(optional)</span></label>
+                    <div className="relative group">
+                      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-secondary/0 via-neon-secondary to-neon-secondary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+                      <Cpu className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-secondary transition-colors" />
+                      <input type="text" value={sourcePath} onChange={e => setSourcePath(e.target.value)} placeholder="C:\path\to\project"
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center pt-8">
+                  <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(0,255,157,0.4)' }} whileTap={{ scale: 0.98 }} type="submit"
+                    className="group relative px-16 py-6 bg-neon-primary rounded-2xl text-[#020203] font-black uppercase tracking-[0.3em] overflow-hidden shadow-2xl shadow-neon-primary/20 btn-glow-primary">
+                    <span className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <span className="relative flex items-center gap-3 text-sm">
+                      <Zap className="w-5 h-5 fill-current" />
+                      Execute Scan
+                    </span>
+                  </motion.button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          {/* RUNNING — Terminal */}
+          {status === 'running' && (
+            <motion.div key="running" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+              <div className="glass-card rounded-3xl p-8 border border-neon-secondary/20 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-neon-secondary blur-xl opacity-30 animate-pulse" />
+                    <div className="relative w-16 h-16 glass-card rounded-2xl flex items-center justify-center border border-neon-secondary/50">
+                      <Activity className="w-8 h-8 text-neon-secondary neon-text-secondary animate-[pulse_1.2s_ease-in-out_infinite]" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white tracking-tight leading-none mb-2">Engaging Analysis</h2>
+                    <span className="font-mono text-xs text-neon-secondary/60 truncate max-w-[300px] italic block">{url}</span>
+                  </div>
+                </div>
+                <div className="text-neon-primary font-black text-3xl italic tracking-tighter neon-text-primary">SCANNING...</div>
+              </div>
+
+              <div className="glass-card rounded-[2rem] overflow-hidden border border-white/5">
+                <div className="bg-white/5 px-6 py-4 flex items-center justify-between border-b border-white/5">
+                  <div className="flex items-center gap-3">
+                    <Terminal className="w-4 h-4 text-neon-secondary" />
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Live Intelligence Log</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="w-2 h-2 rounded-full border border-neon-primary bg-neon-primary/20 animate-pulse" />
+                  </div>
+                </div>
+                <div className="p-8 h-[400px] overflow-y-auto font-mono text-[13px] leading-relaxed bg-black/50">
+                  <AnimatePresence>
+                    {progress.map((msg: string, i: number) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
+                        className="mb-2.5 flex gap-5 group hover:bg-white/5 px-3 py-1 rounded-lg transition-colors">
+                        <span className="text-neon-secondary/30 select-none shrink-0 font-bold">{String(i + 1).padStart(3, '0')}</span>
+                        <span className="text-white/70 group-last:text-neon-primary group-last:font-bold">
+                          {msg.includes('[ALERT]') && <span className="text-neon-accent mr-2">⚠</span>}
+                          {msg}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                  <div ref={terminalEndRef} />
                 </div>
               </div>
-            )
-          })}
+            </motion.div>
+          )}
 
-          <button onClick={reset} className="mt-6 w-full py-2.5 bg-[#21262d] hover:bg-[#30363d] rounded-lg text-sm transition-colors">
-            New Scan
-          </button>
-        </div>
-      )}
+          {/* COMPLETED — Results */}
+          {status === 'completed' && result && (
+            <motion.div key="completed" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }} className="space-y-10">
+              {/* Score + Summary */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-4 glass-card rounded-[3rem] p-12 flex flex-col items-center justify-center border border-neon-accent/30 shadow-[0_0_60px_rgba(255,0,200,0.1)] relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-neon-accent/5 to-transparent pointer-events-none" />
+                  <div className="text-[11px] font-black text-white/40 uppercase tracking-[0.5em] mb-8">Threat Matrix</div>
+                  <div className="text-9xl font-black text-neon-accent neon-text-accent italic leading-none tracking-tighter">{result.riskScore}</div>
+                  <div className="mt-6 text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Risk Score</div>
+                </div>
+
+                <div className="lg:col-span-8 glass-card rounded-[3rem] p-10 border border-white/10 relative">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-lg font-bold text-white uppercase tracking-[0.2em] flex items-center gap-3 italic">
+                      <Activity className="w-5 h-5 text-neon-secondary" />Intelligence Segments
+                    </h3>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={reset}
+                      className="text-[10px] font-black text-neon-secondary uppercase tracking-[0.3em] bg-neon-secondary/10 border border-neon-secondary/30 px-4 py-2 rounded-xl hover:bg-neon-secondary/20 transition-all flex items-center gap-2">
+                      <RefreshCcw className="w-3 h-3" />New Scan
+                    </motion.button>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => {
+                      const cfg = SEVERITY_CONFIG[sev]
+                      const count = result[sev.toLowerCase() as keyof typeof result] as number
+                      return (
+                        <div key={sev} className={`glass-card rounded-[1.5rem] p-6 border ${cfg.border} flex flex-col items-center hover:-translate-y-1 transition-transform`}>
+                          <div className={`text-3xl font-black ${cfg.color} mb-2`}>{count}</div>
+                          <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em]">{sev}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Meta */}
+              <div className="flex flex-wrap gap-4">
+                {[
+                  { icon: Globe,  label: 'Target',        value: result.targetUrl,              color: 'text-neon-primary' },
+                  { icon: Search, label: 'URLs Crawled',   value: result.scannedUrls.length,     color: 'text-neon-secondary' },
+                  { icon: Lock,   label: 'Vulnerabilities',value: result.totalVulnerabilities,   color: 'text-neon-accent' },
+                ].map((stat, i) => (
+                  <div key={i} className="flex-1 min-w-[200px] glass-card rounded-2xl p-5 border border-white/5 flex items-center gap-4 hover:border-white/20 transition-colors">
+                    <div className={`p-3 rounded-xl bg-white/5 ${stat.color}`}><stat.icon className="w-5 h-5" /></div>
+                    <div>
+                      <div className="text-[9px] font-bold text-white/30 uppercase tracking-widest">{stat.label}</div>
+                      <div className="text-sm font-bold text-white/80 truncate max-w-[180px]">{stat.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Vulnerabilities */}
+              <div className="space-y-14 py-4">
+                {(['Critical', 'High', 'Medium', 'Low', 'Info'] as const).map(sev => {
+                  const vulns = result.vulnerabilities.filter((v: Vulnerability) => v.severity === sev)
+                  if (!vulns.length) return null
+                  const cfg = SEVERITY_CONFIG[sev]
+                  return (
+                    <div key={sev}>
+                      <div className="flex items-center gap-6 mb-8">
+                        <div className={`w-2 h-2 rounded-full ${cfg.color} animate-pulse`} />
+                        <h3 className={`${cfg.color} text-[11px] font-black uppercase tracking-[0.6em] whitespace-nowrap`}>
+                          {sev} Cluster ({vulns.length})
+                        </h3>
+                        <div className="grow h-[1px] bg-white/5" />
+                      </div>
+                      <div className="space-y-4">
+                        {vulns.map((vuln: Vulnerability) => (
+                          <VulnerabilityCard key={vuln.id} vuln={vuln}
+                            isExpanded={expanded === vuln.id}
+                            onToggle={() => setExpanded(expanded === vuln.id ? null : vuln.id)} />
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* ERROR */}
+          {status === 'error' && (
+            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="glass-card rounded-3xl p-10 border border-neon-accent/40 text-center">
+              <AlertTriangle className="w-12 h-12 text-neon-accent mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-white mb-2">Scan Failed</h2>
+              <p className="text-white/40 mb-6">Could not connect to API. Make sure <code className="text-neon-secondary">Protector.API</code> is running.</p>
+              <motion.button whileHover={{ scale: 1.05 }} onClick={reset}
+                className="px-8 py-3 bg-neon-accent/20 border border-neon-accent/40 text-neon-accent rounded-xl font-bold text-sm uppercase tracking-widest">
+                Try Again
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
 
-function VulnCard({ vuln, isOpen, onToggle }: { vuln: Vulnerability; isOpen: boolean; onToggle: () => void }) {
+interface VulnCardProps {
+  vuln: Vulnerability
+  isExpanded: boolean
+  onToggle: () => void
+}
+
+function VulnerabilityCard({ vuln, isExpanded, onToggle }: VulnCardProps) {
   const cfg = SEVERITY_CONFIG[vuln.severity]
+  const Icon = cfg.icon
   return (
-    <div className={`bg-[#161b22] border ${cfg.border} rounded-lg overflow-hidden`}>
-      <button onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#21262d] transition-colors">
-        <div className="flex items-center gap-3">
-          <span className={`text-xs font-bold px-2 py-0.5 rounded ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
-            {vuln.severity}
-          </span>
-          <span className="text-sm font-medium">{vuln.title}</span>
+    <motion.div layout className={`glass-card rounded-[1.5rem] overflow-hidden border transition-all duration-500 ${isExpanded ? `${cfg.border} ${cfg.glow}` : 'border-white/5 hover:border-white/20'}`}>
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-8 py-6 text-left group">
+        <div className="flex items-center gap-6">
+          <div className={`p-3 rounded-2xl ${cfg.bg} ${cfg.color} group-hover:scale-110 group-hover:rotate-6 transition-transform`}>
+            <Icon className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-base font-bold text-white uppercase italic group-hover:translate-x-1 transition-transform block">{vuln.title}</span>
+            <div className="flex items-center gap-4 mt-1">
+              <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">{vuln.category}</span>
+              {vuln.cweId && <span className="text-[11px] font-mono text-neon-secondary/40">{vuln.cweId}</span>}
+            </div>
+          </div>
         </div>
-        <span className="text-[#484f58] text-xs">{isOpen ? '▲' : '▼'}</span>
+        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} className="w-10 h-10 glass-card rounded-xl flex items-center justify-center border border-white/10">
+          <ChevronDown className="w-5 h-5 text-white/30" />
+        </motion.div>
       </button>
-      {isOpen && (
-        <div className="px-4 pb-4 text-sm space-y-3 border-t border-[#30363d] pt-3">
-          <p className="text-[#8b949e]">{vuln.description}</p>
-          {vuln.url && <div><span className="text-[#484f58]">URL: </span><span className="font-mono text-xs text-blue-400">{vuln.url}</span></div>}
-          {vuln.filePath && <div><span className="text-[#484f58]">File: </span><span className="font-mono text-xs">{vuln.filePath}{vuln.lineNumber ? `:${vuln.lineNumber}` : ''}</span></div>}
-          {vuln.evidence && <div className="bg-[#0d1117] rounded-lg p-3 font-mono text-xs text-[#8b949e] break-all">{vuln.evidence}</div>}
-          <div className="flex gap-4 text-xs text-[#484f58]">
-            {vuln.cweId && <span>{vuln.cweId}</span>}
-            {vuln.owaspCategory && <span>{vuln.owaspCategory}</span>}
-          </div>
-          <div className="bg-green-900/20 border border-green-700/50 rounded-lg p-3 text-xs text-green-400">
-            <span className="font-semibold">Fix: </span>{vuln.remediation}
-          </div>
-        </div>
-      )}
-    </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}>
+            <div className="px-8 pb-10 pt-4 space-y-8 border-t border-white/5 bg-white/[0.01]">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                <div className="lg:col-span-8 space-y-6">
+                  <p className="text-base text-white/60 leading-relaxed font-medium pl-5 border-l border-white/10 italic">{vuln.description}</p>
+                  <div className="glass-card border border-green-500/30 bg-green-500/5 rounded-2xl p-8">
+                    <h4 className="text-[10px] font-black text-green-400 uppercase tracking-[0.5em] mb-3 flex items-center gap-2">
+                      <Zap className="w-4 h-4 fill-current" />Remediation
+                    </h4>
+                    <p className="text-green-400 font-bold leading-snug">{vuln.remediation}</p>
+                  </div>
+                </div>
+                <div className="lg:col-span-4 space-y-4 font-mono text-xs">
+                  {vuln.url && (
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <span className="text-[9px] text-white/20 uppercase block mb-2 font-bold">URL</span>
+                      <span className="text-neon-secondary break-all">{vuln.url}</span>
+                    </div>
+                  )}
+                  {vuln.owaspCategory && (
+                    <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
+                      <span className="text-[9px] text-white/20 uppercase block mb-2 font-bold">OWASP</span>
+                      <span className="text-white/50">{vuln.owaspCategory}</span>
+                    </div>
+                  )}
+                  {vuln.evidence && (
+                    <div className="p-4 bg-black/50 rounded-2xl border border-white/5">
+                      <span className="text-[9px] text-white/20 uppercase block mb-2 font-bold">Evidence</span>
+                      <span className="text-white/40 italic break-all">{vuln.evidence}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

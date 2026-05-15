@@ -1,8 +1,10 @@
+export type Severity = 'Critical' | 'High' | 'Medium' | 'Low' | 'Info'
+
 export interface Vulnerability {
   id: string
   title: string
   description: string
-  severity: 'Critical' | 'High' | 'Medium' | 'Low' | 'Info'
+  severity: Severity
   category: string
   url?: string
   filePath?: string

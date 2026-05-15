@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import * as signalR from '@microsoft/signalr'
-import type { ScanResult, ScanStatus } from './types'
+import type { ScanResult, ScanStatus } from '../types'
 
 const API_URL = 'http://localhost:5153'
 
@@ -18,11 +18,16 @@ export function useScan() {
     setError(null)
 
     try {
-      // Step 1: start the scan — API returns scanId immediately
+      // Step 1: POST to API — returns scanId immediately
       const response = await fetch(`${API_URL}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, sourceCodePath: sourcePath || null, maxDepth: 2 })
+        body: JSON.stringify({
+          url,
+          sourceCodePath: sourcePath || null,
+          maxDepth: 2,
+          timeoutSeconds: 10
+        })
       })
 
       if (!response.ok) {
@@ -32,7 +37,7 @@ export function useScan() {
 
       const { scanId } = await response.json()
 
-      // Step 2: connect to SignalR hub to receive real-time progress
+      // Step 2: connect to SignalR hub for real-time progress
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(`${API_URL}/hubs/scan`)
         .withAutomaticReconnect()
@@ -40,19 +45,16 @@ export function useScan() {
 
       connectionRef.current = connection
 
-      // Listen for progress messages from the server
       connection.on('Progress', (msg: string) => {
         setProgress(prev => [...prev, msg])
       })
 
-      // Listen for scan completion
       connection.on('Completed', (data: ScanResult) => {
         setResult(data)
         setStatus('completed')
         connection.stop()
       })
 
-      // Listen for errors
       connection.on('Error', (msg: string) => {
         setError(msg)
         setStatus('error')
@@ -60,8 +62,6 @@ export function useScan() {
       })
 
       await connection.start()
-
-      // Join the group for this specific scan
       await connection.invoke('JoinScan', scanId)
 
     } catch (e) {
