@@ -91,6 +91,7 @@
   mask-composite: exclude;
   opacity: 0.15;
   transition: opacity 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
 }
 .neon-border:hover::after { opacity: 0.6; }
 
