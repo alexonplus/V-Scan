@@ -18,10 +18,12 @@ jobs:
         uses: actions/checkout@v4
 
       # 2. Install .NET 8 SDK
-      - name: Setup .NET 8
+      - name: Setup .NET 8 and 9
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            9.0.x
 
       # 3. Restore NuGet packages (cached between runs for speed)
       - name: Restore dependencies
