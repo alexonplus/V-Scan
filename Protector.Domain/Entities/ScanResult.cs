@@ -15,11 +15,18 @@ public sealed class ScanResult
     public IReadOnlyList<string> ScannedUrls => _scannedUrls;
     public ScanSummary Summary => new(this);
 
+    // vulnId → AI-generated insight (populated by OllamaEnricher if available)
+    public IReadOnlyDictionary<string, string> AiInsights { get; private set; } =
+        new Dictionary<string, string>();
+
     public void AddVulnerability(Vulnerability vulnerability) =>
         _vulnerabilities.Add(vulnerability);
 
     public void AddScannedUrl(string url) =>
         _scannedUrls.Add(url);
+
+    public void SetAiInsights(Dictionary<string, string> insights) =>
+        AiInsights = insights;
 
     public void Complete() =>
         CompletedAt = DateTime.UtcNow;

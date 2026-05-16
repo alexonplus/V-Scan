@@ -25,8 +25,8 @@ export function useScan() {
         body: JSON.stringify({
           url,
           sourceCodePath: sourcePath || null,
-          maxDepth: 2,
-          timeoutSeconds: 10
+          maxDepth: 1,   // depth 1 = only the main page, faster scans
+          timeoutSeconds: 8
         })
       })
 

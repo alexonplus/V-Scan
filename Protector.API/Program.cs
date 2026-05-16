@@ -12,11 +12,12 @@ builder.Services.AddSignalR();
 // All our scan services (analyzers, crawler, use case)
 builder.Services.AddProtector();
 
-// CORS — allow React dev server (localhost:5173) to call the API
+// CORS — allow any localhost port (Vite may pick a different port if 5173 is busy)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactApp", policy =>
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+        policy.SetIsOriginAllowed(origin =>
+                new Uri(origin).Host == "localhost")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials()); // required for SignalR

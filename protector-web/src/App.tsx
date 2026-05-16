@@ -263,6 +263,7 @@ export default function App() {
                       <div className="space-y-4">
                         {vulns.map((vuln: Vulnerability) => (
                           <VulnerabilityCard key={vuln.id} vuln={vuln}
+                            aiInsight={result.aiInsights?.[vuln.id]}
                             isExpanded={expanded === vuln.id}
                             onToggle={() => setExpanded(expanded === vuln.id ? null : vuln.id)} />
                         ))}
@@ -297,9 +298,10 @@ interface VulnCardProps {
   vuln: Vulnerability
   isExpanded: boolean
   onToggle: () => void
+  aiInsight?: string
 }
 
-function VulnerabilityCard({ vuln, isExpanded, onToggle }: VulnCardProps) {
+function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardProps) {
   const cfg = SEVERITY_CONFIG[vuln.severity]
   const Icon = cfg.icon
   return (
@@ -329,6 +331,23 @@ function VulnerabilityCard({ vuln, isExpanded, onToggle }: VulnCardProps) {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8 space-y-6">
                   <p className="text-base text-white/60 leading-relaxed font-medium pl-5 border-l border-white/10 italic">{vuln.description}</p>
+
+                  {/* AI Insight block — shown only when Ollama is running */}
+                  {aiInsight && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="glass-card border border-neon-secondary/30 bg-neon-secondary/5 rounded-2xl p-6"
+                    >
+                      <h4 className="text-[10px] font-black text-neon-secondary uppercase tracking-[0.5em] mb-3 flex items-center gap-2">
+                        <Activity className="w-4 h-4" />
+                        AI Analysis
+                        <span className="text-white/20 font-normal normal-case tracking-normal ml-1">via Ollama</span>
+                      </h4>
+                      <p className="text-neon-secondary/70 text-sm leading-relaxed">{aiInsight}</p>
+                    </motion.div>
+                  )}
+
                   <div className="glass-card border border-green-500/30 bg-green-500/5 rounded-2xl p-8">
                     <h4 className="text-[10px] font-black text-green-400 uppercase tracking-[0.5em] mb-3 flex items-center gap-2">
                       <Zap className="w-4 h-4 fill-current" />Remediation

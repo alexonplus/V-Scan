@@ -21,8 +21,8 @@ public sealed class NucleiAnalyzer : IVulnerabilityAnalyzer
 
         try
         {
-            // Run nuclei with JSON output, community templates, reasonable timeout
-            var args = $"-u {target.BaseUrl} -j -silent -timeout {target.TimeoutSeconds} -rl 50";
+            // Run nuclei: JSON output, silent, max 2 min total, rate limit 30 req/s
+            var args = $"-u {target.BaseUrl} -j -silent -timeout 5 -rl 30 -duc -stats-json";
             var output = await RunNucleiAsync(args, ct);
 
             foreach (var line in output)

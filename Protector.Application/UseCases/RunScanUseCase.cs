@@ -13,16 +13,18 @@ public sealed class RunScanUseCase
     private readonly IEnumerable<IVulnerabilityAnalyzer> _httpAnalyzers;
     private readonly IEnumerable<IStaticCodeAnalyzer> _staticAnalyzers;
     private readonly IWebCrawler _crawler;
+    private readonly IVulnerabilityEnricher? _enricher;
 
-    // All dependencies come from DI — this class never creates analyzers itself
     public RunScanUseCase(
         IEnumerable<IVulnerabilityAnalyzer> httpAnalyzers,
         IEnumerable<IStaticCodeAnalyzer> staticAnalyzers,
-        IWebCrawler crawler)
+        IWebCrawler crawler,
+        IVulnerabilityEnricher? enricher = null)
     {
         _httpAnalyzers = httpAnalyzers;
         _staticAnalyzers = staticAnalyzers;
         _crawler = crawler;
+        _enricher = enricher;
     }
 
     public event Action<string>? OnProgress;
@@ -85,6 +87,17 @@ public sealed class RunScanUseCase
         {
             OnProgress?.Invoke("Running static code analyzers...");
             await RunStaticAnalysisAsync(result, request.SourceCodePath, ct);
+        }
+
+        // Step 4: AI enrichment for Critical/High findings (optional — skipped if Ollama is not running)
+        if (_enricher is not null && result.Summary.Total > 0)
+        {
+            var insights = await _enricher.EnrichAllAsync(
+                result.Vulnerabilities,
+                progress: msg => OnProgress?.Invoke(msg),
+                ct);
+
+            result.SetAiInsights(insights);
         }
 
         result.Complete();
