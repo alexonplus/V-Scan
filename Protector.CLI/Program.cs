@@ -2,10 +2,20 @@
 using Protector.Application.DTOs;
 using Protector.Application.UseCases;
 using Protector.Infrastructure;
+using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.CLI.Reports;
 using Spectre.Console;
 
 ConsoleReporter.PrintBanner();
+
+// Handle --install-nuclei before anything else
+if (args.Contains("--install-nuclei"))
+{
+    await NucleiDownloader.EnsureInstalledAsync(
+        progress: msg => AnsiConsole.MarkupLine($"[grey]  » {Markup.Escape(msg)}[/]"));
+    AnsiConsole.MarkupLine("[green]Nuclei ready.[/] Run a scan to use it.");
+    return 0;
+}
 
 // Parse arguments: --url, --source, --report, --output, --depth, --timeout
 var url = GetArg(args, "--url");
@@ -23,6 +33,9 @@ if (url is null)
     AnsiConsole.MarkupLine("  dotnet run --project Protector.CLI -- --url https://example.com");
     AnsiConsole.MarkupLine("  dotnet run --project Protector.CLI -- --url https://example.com --source ./src");
     AnsiConsole.MarkupLine("  dotnet run --project Protector.CLI -- --url https://example.com --report html --output ./reports");
+    AnsiConsole.MarkupLine("");
+    AnsiConsole.MarkupLine("[bold]Nuclei:[/]");
+    AnsiConsole.MarkupLine("  dotnet run --project Protector.CLI -- --install-nuclei");
     return 1;
 }
 

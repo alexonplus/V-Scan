@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Protector.Application.UseCases;
 using Protector.Domain.Interfaces;
 using Protector.Infrastructure.Analyzers.Http;
+using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
 using Protector.Infrastructure.Crawler;
 
@@ -36,6 +37,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVulnerabilityAnalyzer, CorsAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, CsrfAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, SslAnalyzer>();
+
+        // Nuclei — only registered if binary is present, skipped otherwise
+        if (NucleiDownloader.IsInstalled)
+            services.AddScoped<IVulnerabilityAnalyzer, NucleiAnalyzer>();
 
         // Static code analyzers
         services.AddScoped<IStaticCodeAnalyzer, CSharpCodeAnalyzer>();
