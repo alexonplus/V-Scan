@@ -36,7 +36,9 @@ public sealed class RunScanUseCase
             BaseUrl = new Uri(request.Url),
             SourceCodePath = request.SourceCodePath,
             MaxDepth = request.MaxDepth,
-            TimeoutSeconds = request.TimeoutSeconds
+            TimeoutSeconds = request.TimeoutSeconds,
+            UseNuclei = request.UseNuclei,
+            NucleiTags = request.NucleiTags
         };
 
         var result = new ScanResult { Target = target };

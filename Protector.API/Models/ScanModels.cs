@@ -4,8 +4,8 @@ public sealed class StartScanRequest
 {
     public required string Url { get; init; }
     public string? SourceCodePath { get; init; }
-    public int MaxDepth { get; init; } = 2;
-    public int TimeoutSeconds { get; init; } = 10;
+    public string Mode { get; init; } = "Standard";
+    public int TimeoutSeconds { get; init; } = 8;
 }
 
 public sealed class ScanStatusResponse

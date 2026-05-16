@@ -15,7 +15,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
     private readonly HttpClient _http;
     private readonly string _model;
 
-    public OllamaEnricher(IHttpClientFactory factory, string model = "codellama")
+    public OllamaEnricher(IHttpClientFactory factory, string model = "qwen3-coder")
     {
         _http = factory.CreateClient("scanner");
         _model = model;

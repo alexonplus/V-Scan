@@ -1,17 +1,29 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import * as signalR from '@microsoft/signalr'
 import type { ScanResult, ScanStatus } from '../types'
 
 const API_URL = 'http://localhost:5153'
+
+export async function checkOllamaStatus(): Promise<boolean> {
+  try {
+    const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(2000) })
+    return res.ok
+  } catch { return false }
+}
 
 export function useScan() {
   const [status, setStatus] = useState<ScanStatus>('idle')
   const [progress, setProgress] = useState<string[]>([])
   const [result, setResult] = useState<ScanResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null)
   const connectionRef = useRef<signalR.HubConnection | null>(null)
 
-  const startScan = useCallback(async (url: string, sourcePath?: string) => {
+  useEffect(() => {
+    checkOllamaStatus().then(setOllamaOnline)
+  }, [])
+
+  const startScan = useCallback(async (url: string, sourcePath?: string, mode: string = 'Standard') => {
     setStatus('running')
     setProgress([])
     setResult(null)
@@ -25,7 +37,7 @@ export function useScan() {
         body: JSON.stringify({
           url,
           sourceCodePath: sourcePath || null,
-          maxDepth: 1,   // depth 1 = only the main page, faster scans
+          mode,
           timeoutSeconds: 8
         })
       })
@@ -78,5 +90,5 @@ export function useScan() {
     setError(null)
   }, [])
 
-  return { status, progress, result, error, startScan, reset }
+  return { status, progress, result, error, ollamaOnline, startScan, reset }
 }

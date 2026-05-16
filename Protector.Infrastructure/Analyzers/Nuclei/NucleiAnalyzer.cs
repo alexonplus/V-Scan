@@ -14,15 +14,16 @@ public sealed class NucleiAnalyzer : IVulnerabilityAnalyzer
         ScanTarget target,
         CancellationToken ct = default)
     {
-        if (!NucleiDownloader.IsInstalled)
+        if (!NucleiDownloader.IsInstalled || !target.UseNuclei)
             return [];
 
         var vulnerabilities = new List<Vulnerability>();
 
         try
         {
-            // Run nuclei: JSON output, silent, max 2 min total, rate limit 30 req/s
-            var args = $"-u {target.BaseUrl} -j -silent -timeout 5 -rl 30 -duc -stats-json";
+            // Build args: add tag filter for Standard mode, run all for Deep
+            var tagFilter = target.NucleiTags is not null ? $"-tags {target.NucleiTags}" : "";
+            var args = $"-u {target.BaseUrl} -j -silent -timeout 5 -rl 30 {tagFilter}".Trim();
             var output = await RunNucleiAsync(args, ct);
 
             foreach (var line in output)

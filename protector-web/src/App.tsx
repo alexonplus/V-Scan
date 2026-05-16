@@ -21,7 +21,8 @@ export default function App() {
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
-  const { status, progress, result, startScan, reset } = useScan()
+  const [scanMode, setScanMode] = useState<'Quick' | 'Standard' | 'Deep'>('Standard')
+  const { status, progress, result, ollamaOnline, startScan, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function App() {
   const handleScan = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setActiveFilter(null)
-    if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined)
+    if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined, scanMode)
   }
 
   return (
@@ -55,10 +56,18 @@ export default function App() {
               <p className="text-white/40 text-xs font-mono uppercase tracking-[0.3em] mt-2 italic font-bold">Web Vulnerability Scanner</p>
             </div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2 text-xs font-mono text-neon-secondary neon-text-secondary uppercase tracking-widest bg-neon-secondary/5 border border-neon-secondary/20 px-4 py-2 rounded-lg">
               <span className="w-2 h-2 rounded-full bg-neon-secondary animate-pulse shadow-[0_0_8px_var(--color-neon-secondary)]" />
               System Ready
+            </div>
+            <div className={`flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-lg border ${
+              ollamaOnline
+                ? 'text-neon-primary border-neon-primary/20 bg-neon-primary/5'
+                : 'text-white/20 border-white/10 bg-white/5'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${ollamaOnline ? 'bg-neon-primary animate-pulse' : 'bg-white/20'}`} />
+              AI {ollamaOnline ? 'Online' : 'Offline'}
             </div>
           </motion.div>
         </header>
@@ -105,7 +114,39 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col items-center pt-8">
+                {/* Scan Mode Selector */}
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">Scan Mode</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { mode: 'Quick',    label: 'Quick',    desc: '~30s • Headers only',          color: 'neon-primary' },
+                      { mode: 'Standard', label: 'Standard', desc: '~2min • + Nuclei top CVEs',    color: 'neon-secondary' },
+                      { mode: 'Deep',     label: 'Deep',     desc: '~10min • Full Nuclei scan',    color: 'neon-accent' },
+                    ] as const).map(({ mode, label, desc, color }) => (
+                      <motion.button
+                        key={mode}
+                        type="button"
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setScanMode(mode)}
+                        className={`glass-card rounded-2xl p-4 border text-left transition-all ${
+                          scanMode === mode
+                            ? `border-${color}/60 bg-${color}/10 shadow-[0_0_20px_rgba(0,0,0,0.3)]`
+                            : 'border-white/5 hover:border-white/20'
+                        }`}
+                      >
+                        <div className={`text-sm font-black uppercase tracking-wider mb-1 ${scanMode === mode ? `text-${color}` : 'text-white/60'}`}>
+                          {label}
+                        </div>
+                        <div className="text-[10px] text-white/30">{desc}</div>
+                        {scanMode === mode && (
+                          <div className={`mt-2 w-1.5 h-1.5 rounded-full bg-${color} animate-pulse`} />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center pt-4">
                   <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(0,255,157,0.4)' }} whileTap={{ scale: 0.98 }} type="submit"
                     className="group relative px-16 py-6 bg-neon-primary rounded-2xl text-[#020203] font-black uppercase tracking-[0.3em] overflow-hidden shadow-2xl shadow-neon-primary/20 btn-glow-primary">
                     <span className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
