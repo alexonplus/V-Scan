@@ -29,6 +29,8 @@ export interface ScanResult {
   riskScore: number
   vulnerabilities: Vulnerability[]
   scannedUrls: string[]
+  // vulnId → AI-generated insight from Ollama (present only if Ollama is running)
+  aiInsights?: Record<string, string>
 }
 
 export type ScanStatus = 'idle' | 'running' | 'completed' | 'error'

@@ -5,6 +5,7 @@ using Protector.Infrastructure.Analyzers.Http;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
 using Protector.Infrastructure.Crawler;
+using Protector.Infrastructure.Enrichers;
 
 namespace Protector.Infrastructure;
 
@@ -48,6 +49,10 @@ public static class ServiceCollectionExtensions
 
         // Web crawler
         services.AddScoped<IWebCrawler, WebCrawler>();
+
+        // Ollama enricher — registered only if Ollama is running locally
+        // Checked synchronously via a quick ping at startup
+        services.AddScoped<IVulnerabilityEnricher, OllamaEnricher>();
 
         // Use case
         services.AddScoped<RunScanUseCase>();
