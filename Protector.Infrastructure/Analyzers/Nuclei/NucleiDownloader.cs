@@ -1,10 +1,12 @@
 using System.IO.Compression;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace Protector.Infrastructure.Analyzers.Nuclei;
 
 /// <summary>
 /// Downloads the Nuclei binary from GitHub releases if not already present.
+/// Uses GitHub API to find the correct versioned filename first.
 /// Stores it in ~/.vscan/nuclei/ so it persists between runs.
 /// </summary>
 public static class NucleiDownloader
@@ -30,11 +32,21 @@ public static class NucleiDownloader
         }
 
         Directory.CreateDirectory(InstallDir);
-        progress?.Invoke("Downloading Nuclei scanner...");
 
-        var downloadUrl = GetDownloadUrl();
         using var http = new HttpClient();
-        http.Timeout = TimeSpan.FromMinutes(3);
+        http.Timeout = TimeSpan.FromMinutes(5);
+        http.DefaultRequestHeaders.Add("User-Agent", "V-Scan/1.0");
+
+        // Step 1: ask GitHub API for the latest release info
+        progress?.Invoke("Fetching latest Nuclei release info...");
+        var apiUrl = "https://api.github.com/repos/projectdiscovery/nuclei/releases/latest";
+        var json = await http.GetStringAsync(apiUrl, ct);
+
+        var downloadUrl = ParseDownloadUrl(json);
+        if (downloadUrl is null)
+            throw new InvalidOperationException("Could not find Nuclei download URL in GitHub release.");
+
+        progress?.Invoke($"Downloading Nuclei from {downloadUrl}...");
 
         var zipPath = Path.Combine(InstallDir, "nuclei.zip");
         var bytes = await http.GetByteArrayAsync(downloadUrl, ct);
@@ -44,28 +56,41 @@ public static class NucleiDownloader
         ZipFile.ExtractToDirectory(zipPath, InstallDir, overwriteFiles: true);
         File.Delete(zipPath);
 
-        // Make executable on Linux/macOS
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             System.Diagnostics.Process.Start("chmod", $"+x {BinaryPath}");
 
         progress?.Invoke($"Nuclei installed at {BinaryPath}");
     }
 
-    private static string GetDownloadUrl()
+    private static string? ParseDownloadUrl(string json)
     {
-        // Latest stable release from GitHub
-        const string baseUrl = "https://github.com/projectdiscovery/nuclei/releases/latest/download";
+        var assetName = GetAssetName();
 
+        using var doc = JsonDocument.Parse(json);
+        var assets = doc.RootElement.GetProperty("assets");
+
+        foreach (var asset in assets.EnumerateArray())
+        {
+            var name = asset.GetProperty("name").GetString() ?? "";
+            if (name.Contains(assetName, StringComparison.OrdinalIgnoreCase))
+                return asset.GetProperty("browser_download_url").GetString();
+        }
+
+        return null;
+    }
+
+    private static string GetAssetName()
+    {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return $"{baseUrl}/nuclei_windows_amd64.zip";
+            return "windows_amd64.zip";
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-                ? $"{baseUrl}/nuclei_macos_arm64.zip"
-                : $"{baseUrl}/nuclei_macos_amd64.zip";
+                ? "macOS_arm64.zip"
+                : "macOS_amd64.zip";
 
         return RuntimeInformation.ProcessArchitecture == Architecture.Arm64
-            ? $"{baseUrl}/nuclei_linux_arm64.zip"
-            : $"{baseUrl}/nuclei_linux_amd64.zip";
+            ? "linux_arm64.zip"
+            : "linux_amd64.zip";
     }
 }
