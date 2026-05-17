@@ -17,7 +17,8 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
 
     public OllamaEnricher(IHttpClientFactory factory, string model = "phi3:mini")
     {
-        _http = factory.CreateClient("scanner");
+        // Use dedicated "ollama" client with 3min timeout — "scanner" client has only 15s
+        _http = factory.CreateClient("ollama");
         _model = model;
     }
 
@@ -51,7 +52,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
             };
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            cts.CancelAfter(TimeSpan.FromSeconds(90));
 
             var httpResponse = await _http.PostAsJsonAsync(OllamaUrl, request, cts.Token);
             if (!httpResponse.IsSuccessStatusCode) return null;
@@ -138,7 +139,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
             };
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(45));
+            cts.CancelAfter(TimeSpan.FromSeconds(120));
 
             var httpResponse = await _http.PostAsJsonAsync(OllamaUrl, request, cts.Token);
             if (!httpResponse.IsSuccessStatusCode) return null;
