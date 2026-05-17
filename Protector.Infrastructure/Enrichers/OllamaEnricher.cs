@@ -51,7 +51,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
             };
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            cts.CancelAfter(TimeSpan.FromSeconds(90));
 
             var httpResponse = await _http.PostAsJsonAsync(OllamaUrl, request, cts.Token);
             if (!httpResponse.IsSuccessStatusCode) return null;
@@ -138,7 +138,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
             };
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(TimeSpan.FromSeconds(45));
+            cts.CancelAfter(TimeSpan.FromSeconds(120));
 
             var httpResponse = await _http.PostAsJsonAsync(OllamaUrl, request, cts.Token);
             if (!httpResponse.IsSuccessStatusCode) return null;
