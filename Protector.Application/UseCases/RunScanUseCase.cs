@@ -4,10 +4,6 @@ using Protector.Application.DTOs;
 
 namespace Protector.Application.UseCases;
 
-/// <summary>
-/// Orchestrates the full scan: crawls URLs, runs all HTTP analyzers,
-/// optionally runs static code analyzers, and returns a complete ScanResult.
-/// </summary>
 public sealed class RunScanUseCase
 {
     private readonly IEnumerable<IVulnerabilityAnalyzer> _httpAnalyzers;
@@ -29,8 +25,19 @@ public sealed class RunScanUseCase
 
     public event Action<string>? OnProgress;
 
+    // Sends stage progress: "STAGE:name:done:total:message"
+    private void StageProgress(string stage, int done, int total, string message)
+    {
+        OnProgress?.Invoke($"STAGE:{stage}:{done}:{total}:{message}");
+        OnProgress?.Invoke(message);
+    }
+
     public async Task<ScanResult> ExecuteAsync(ScanRequest request, CancellationToken ct = default)
     {
+        var hasStatic = !string.IsNullOrEmpty(request.SourceCodePath) && Directory.Exists(request.SourceCodePath);
+        var hasNuclei = request.UseNuclei;
+        var hasAi = _enricher is not null;
+
         var target = new ScanTarget
         {
             BaseUrl = new Uri(request.Url),
@@ -43,81 +50,114 @@ public sealed class RunScanUseCase
 
         var result = new ScanResult { Target = target };
 
-        // Step 1: Crawl the site to discover all URLs
-        OnProgress?.Invoke("Crawling site to discover URLs...");
+        // Stage 1: Crawl
+        StageProgress("crawl", 0, 1, "Crawling site to discover URLs...");
         var urls = new List<string>();
         await foreach (var url in _crawler.CrawlAsync(target, ct))
         {
             urls.Add(url);
             result.AddScannedUrl(url);
         }
-        OnProgress?.Invoke($"Discovered {urls.Count} URLs.");
+        StageProgress("crawl", 1, 1, $"Discovered {urls.Count} URLs.");
 
-        // Step 2: Run all HTTP analyzers against each discovered URL
-        // Each analyzer is independent — run them in parallel per URL for speed
-        OnProgress?.Invoke("Running HTTP vulnerability analyzers...");
-        foreach (var url in urls)
+        // Stage 2: HTTP Analyzers
+        var analyzerList = _httpAnalyzers
+            .Where(a => hasNuclei || a.Name != "Nuclei Scanner")
+            .ToList();
+        StageProgress("http", 0, urls.Count, "Running HTTP vulnerability analyzers...");
+
+        for (var i = 0; i < urls.Count; i++)
         {
+            var url = urls[i];
             var urlTarget = new ScanTarget
             {
                 BaseUrl = new Uri(url),
                 MaxDepth = 1,
-                TimeoutSeconds = target.TimeoutSeconds
+                TimeoutSeconds = target.TimeoutSeconds,
+                UseNuclei = target.UseNuclei,
+                NucleiTags = target.NucleiTags
             };
 
-            var httpTasks = _httpAnalyzers.Select(async analyzer =>
-            {
-                OnProgress?.Invoke($"  [{analyzer.Name}] {url}");
-                try
+            var httpTasks = analyzerList
+                .Where(a => a.Name != "Nuclei Scanner")
+                .Select(async analyzer =>
                 {
-                    return await analyzer.AnalyzeAsync(urlTarget, ct);
-                }
-                catch
-                {
-                    return Enumerable.Empty<Vulnerability>();
-                }
-            });
+                    try { return await analyzer.AnalyzeAsync(urlTarget, ct); }
+                    catch { return Enumerable.Empty<Vulnerability>(); }
+                });
 
             var httpResults = await Task.WhenAll(httpTasks);
             foreach (var vuln in httpResults.SelectMany(v => v))
                 result.AddVulnerability(vuln);
+
+            StageProgress("http", i + 1, urls.Count, $"Analyzed {i + 1}/{urls.Count}: {url}");
         }
 
-        // Step 3: Run static code analyzers if source code path was provided
-        if (!string.IsNullOrEmpty(request.SourceCodePath) &&
-            Directory.Exists(request.SourceCodePath))
+        // Stage 3: Nuclei
+        if (hasNuclei)
         {
-            OnProgress?.Invoke("Running static code analyzers...");
-            await RunStaticAnalysisAsync(result, request.SourceCodePath, ct);
+            var nucleiAnalyzer = analyzerList.FirstOrDefault(a => a.Name == "Nuclei Scanner");
+            if (nucleiAnalyzer is not null)
+            {
+                StageProgress("nuclei", 0, urls.Count, "Running Nuclei scanner...");
+                for (var i = 0; i < urls.Count; i++)
+                {
+                    var urlTarget = new ScanTarget
+                    {
+                        BaseUrl = new Uri(urls[i]),
+                        MaxDepth = 1,
+                        TimeoutSeconds = target.TimeoutSeconds,
+                        UseNuclei = true,
+                        NucleiTags = target.NucleiTags
+                    };
+                    try
+                    {
+                        var vulns = await nucleiAnalyzer.AnalyzeAsync(urlTarget, ct);
+                        foreach (var v in vulns) result.AddVulnerability(v);
+                    }
+                    catch { }
+                    StageProgress("nuclei", i + 1, urls.Count, $"Nuclei {i + 1}/{urls.Count}: {urls[i]}");
+                }
+            }
         }
 
-        // Step 4: AI enrichment for Critical/High findings (optional — skipped if Ollama is not running)
-        if (_enricher is not null && result.Summary.Total > 0)
+        // Stage 4: Static analysis
+        if (hasStatic)
         {
-            var insights = await _enricher.EnrichAllAsync(
-                result.Vulnerabilities,
-                progress: msg => OnProgress?.Invoke(msg),
-                ct);
+            StageProgress("static", 0, 1, "Running static code analyzers...");
+            await RunStaticAnalysisAsync(result, request.SourceCodePath!, ct);
+            StageProgress("static", 1, 1, "Static analysis complete.");
+        }
 
-            result.SetAiInsights(insights);
+        // Stage 5: AI Enrichment
+        if (hasAi && result.Summary.Total > 0)
+        {
+            var aiTotal = result.Vulnerabilities.Count(v =>
+                v.Severity is Domain.Enums.Severity.Critical or Domain.Enums.Severity.High);
+
+            if (aiTotal > 0)
+            {
+                var insights = await _enricher!.EnrichAllAsync(
+                    result.Vulnerabilities,
+                    progress: msg => OnProgress?.Invoke(msg),
+                    ct);
+                result.SetAiInsights(insights);
+            }
         }
 
         result.Complete();
-        OnProgress?.Invoke($"Scan complete. Found {result.Summary.Total} vulnerabilities.");
+        StageProgress("done", 1, 1, $"Scan complete. Found {result.Summary.Total} vulnerabilities.");
 
         return result;
     }
 
-    private async Task RunStaticAnalysisAsync(
-        ScanResult result, string sourcePath, CancellationToken ct)
+    private async Task RunStaticAnalysisAsync(ScanResult result, string sourcePath, CancellationToken ct)
     {
-        // Collect all supported file extensions across all analyzers
         var extensionMap = _staticAnalyzers
             .SelectMany(a => a.SupportedExtensions.Select(ext => (Ext: ext, Analyzer: a)))
             .GroupBy(x => x.Ext)
             .ToDictionary(g => g.Key, g => g.Select(x => x.Analyzer).ToList());
 
-        // Walk the directory tree and analyze each matching file
         var files = Directory.EnumerateFiles(sourcePath, "*.*", SearchOption.AllDirectories)
             .Where(f => extensionMap.ContainsKey(Path.GetExtension(f).ToLowerInvariant()))
             .Where(f => !f.Contains("node_modules") && !f.Contains("bin") && !f.Contains("obj"));
@@ -126,7 +166,6 @@ public sealed class RunScanUseCase
         {
             ct.ThrowIfCancellationRequested();
             var ext = Path.GetExtension(file).ToLowerInvariant();
-
             foreach (var analyzer in extensionMap[ext])
             {
                 OnProgress?.Invoke($"  [{analyzer.Name}] {Path.GetFileName(file)}");
@@ -136,7 +175,7 @@ public sealed class RunScanUseCase
                     foreach (var vuln in vulns)
                         result.AddVulnerability(vuln);
                 }
-                catch { /* skip unreadable files */ }
+                catch { }
             }
         }
     }
