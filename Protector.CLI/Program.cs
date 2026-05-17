@@ -61,7 +61,6 @@ var request = new ScanRequest
 {
     Url = url,
     SourceCodePath = source,
-    MaxDepth = depth,
     TimeoutSeconds = timeout,
     ReportFormat = report,
     OutputPath = output
