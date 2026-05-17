@@ -189,7 +189,10 @@ export default function App() {
                   { key: 'nuclei', label: 'Nuclei Scanner',   icon: Radar,    color: 'orange-400' },
                   { key: 'static', label: 'Static Analysis',  icon: Cpu,      color: 'yellow-400' },
                   { key: 'ai',     label: 'AI Enrichment',    icon: Activity, color: 'neon-accent' },
-                ] as const).map(({ key, label, icon: Icon, color }) => {
+                ] as const)
+                // Only show Nuclei if it actually received progress (Deep mode only)
+                .filter(({ key }) => key !== 'nuclei' || !!stages['nuclei'])
+                .map(({ key, label, icon: Icon, color }) => {
                   const stage = stages[key]
                   const pct = stage ? Math.round((stage.done / Math.max(stage.total, 1)) * 100) : 0
                   const isDone = pct === 100
