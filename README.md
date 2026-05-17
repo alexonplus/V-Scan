@@ -1,53 +1,104 @@
-# Protector — Web Vulnerability Scanner
+# V-Scan — Web Vulnerability Scanner
 
-A tool for analyzing vulnerabilities in web applications (React + C# backend).
-Supports two modes: **black-box** (HTTP requests to a live site) and **white-box** (static source code analysis).
+A professional-grade tool for analyzing security vulnerabilities in web applications.
+Combines our custom analyzers with industry-leading open source security tools.
+
+## Features
+
+### Scan Modes
+| Mode | Speed | What runs |
+|---|---|---|
+| **Quick** | ~30s | HTTP analyzers only |
+| **Standard** | ~1-2min | HTTP + httpx + feroxbuster |
+| **Deep** | ~15min | Everything + Nuclei (9000+ templates) |
+
+### HTTP Analyzers (black-box)
+| Analyzer | What it finds |
+|---|---|
+| Security Headers | Missing CSP, HSTS, X-Frame-Options etc. |
+| SQL Injection | SQLi payloads in URL parameters |
+| XSS | Reflected XSS via unencoded input |
+| CORS | Misconfigured cross-origin policies |
+| CSRF | POST forms without anti-forgery tokens |
+| SSL/TLS | Certificate issues, missing HTTPS redirect |
+
+### External Tools (auto-downloaded)
+| Tool | Language | Purpose |
+|---|---|---|
+| **httpx** | Go | Fast technology fingerprinting |
+| **feroxbuster** | Rust | Hidden path discovery (/.env, /admin, /.git) |
+| **Nuclei** | Go | 9000+ CVE and misconfiguration templates |
+| **semgrep** | Python | Professional static code analysis |
+
+### AI Analysis (local, private)
+- Powered by **Ollama** running locally — no data sent to internet
+- Model: **phi3:mini** (2.3GB, optimized for CPU)
+- Per-vulnerability explanations in plain language
+- AI Security Report with top 3 priorities to fix
 
 ## Architecture
 
 ```
-Protector.Domain/         <- Entities, interfaces (no external dependencies)
-Protector.Application/    <- Use cases, scan orchestration
-Protector.Infrastructure/ <- Implementations: HTTP, Roslyn, file system
-Protector.CLI/            <- Entry point, DI setup, console UI
-Protector.Tests/          <- Unit tests (xUnit + FluentAssertions)
+V-Scan/
+├── Protector.Domain/         ← Entities, interfaces (no dependencies)
+├── Protector.Application/    ← Use cases, scan orchestration
+├── Protector.Infrastructure/ ← Analyzers, tools, enrichers
+├── Protector.API/            ← ASP.NET Core + SignalR
+├── Protector.CLI/            ← Command line interface
+├── Protector.Tests/          ← Unit tests (21 tests)
+└── protector-web/            ← React + TypeScript frontend
 ```
 
-## What It Checks
-
-### HTTP Analyzers (black-box)
-| Check | Description |
-|---|---|
-| Security Headers | CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
-| SQL Injection | Parameter testing with SQLi payloads |
-| XSS | Reflected XSS via forms and URL parameters |
-| CORS | Misconfigured Cross-Origin policies |
-| CSRF | Missing anti-forgery tokens |
-| SSL/TLS | Weak ciphers, outdated protocols |
-| Open Redirect | Unprotected redirects |
-| Info Disclosure | Version leaks, stack traces in responses |
-
-### Static Code Analysis (white-box)
-| Check | Language |
-|---|---|
-| SQL via string concatenation | C# |
-| Unsafe deserialization (`BinaryFormatter`) | C# |
-| Hardcoded credentials / API keys | C# / React |
-| `dangerouslySetInnerHTML` | React |
-| `eval()` and `Function()` | React/JS |
-| HTTP instead of HTTPS | React |
-
-## Usage
+## Web UI
 
 ```bash
-# HTTP scan only
+# Terminal 1 — API
+dotnet run --project Protector.API --launch-profile http
+
+# Terminal 2 — Frontend
+cd protector-web && npm run dev
+
+# Open browser
+http://localhost:5173
+```
+
+## CLI Usage
+
+```bash
+# Basic scan
 dotnet run --project Protector.CLI -- --url https://example.com
 
-# HTTP + source code analysis
-dotnet run --project Protector.CLI -- --url https://example.com --source ./path/to/project
+# With source code analysis
+dotnet run --project Protector.CLI -- --url https://example.com --source ./src
 
-# Save HTML report
-dotnet run --project Protector.CLI -- --url https://example.com --report html --output ./reports
+# Deep scan (includes Nuclei)
+dotnet run --project Protector.CLI -- --url https://example.com --mode Deep
+```
+
+## Install External Tools
+
+```bash
+# httpx — technology fingerprinting
+dotnet run --project Protector.CLI -- --install-httpx
+
+# feroxbuster — hidden path discovery
+dotnet run --project Protector.CLI -- --install-feroxbuster
+
+# Nuclei — CVE scanner
+dotnet run --project Protector.CLI -- --install-nuclei
+
+# semgrep — static analysis (requires Python)
+pip install semgrep
+```
+
+## AI Setup (optional)
+
+```bash
+# 1. Download Ollama from ollama.ai
+# 2. Pull the model
+ollama pull phi3:mini
+
+# 3. Restart the API — AI Connected indicator appears automatically
 ```
 
 ## Running Tests
@@ -56,24 +107,12 @@ dotnet run --project Protector.CLI -- --url https://example.com --report html --
 dotnet test
 ```
 
-## Branch Strategy
-
-| Branch | Status | Description |
-|---|---|---|
-| `main` | stable | Production-ready code |
-| `develop` | active | Feature integration |
-| `feature/domain` | done | Domain layer |
-| `feature/infrastructure-http` | planned | HTTP analyzers |
-| `feature/infrastructure-static` | planned | Static code analysis |
-| `feature/application` | planned | Use cases |
-| `feature/cli` | planned | CLI interface |
-| `feature/tests` | planned | Unit tests |
-
 ## Tech Stack
 
 - **.NET 8** — runtime
-- **Roslyn (Microsoft.CodeAnalysis.CSharp)** — C# source code analysis
-- **HtmlAgilityPack** — HTML parsing
-- **Spectre.Console** — rich CLI output
+- **ASP.NET Core + SignalR** — real-time API
+- **React 19 + TypeScript + Tailwind CSS** — frontend
+- **Roslyn** — C# static analysis
 - **xUnit + FluentAssertions + NSubstitute** — testing
-- **Microsoft.Extensions.DependencyInjection** — DI container
+- **Ollama (phi3:mini)** — local AI
+- **httpx, feroxbuster, Nuclei, semgrep** — external security tools
