@@ -172,11 +172,11 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
         foreach (var line in lines)
         {
             if (line.StartsWith("SUMMARY:"))
-                summary = line["SUMMARY:".Length..].Trim();
+                summary = line.Substring("SUMMARY:".Length).Trim();
             else if (line.StartsWith("PRIORITY1:") || line.StartsWith("PRIORITY2:") || line.StartsWith("PRIORITY3:"))
-                priorities.Add(line[line.IndexOf(':') + 1..].Trim());
+                priorities.Add(line.Substring(line.IndexOf(':') + 1).Trim());
             else if (line.StartsWith("RISK:"))
-                risk = line["RISK:".Length..].Trim();
+                risk = line.Substring("RISK:".Length).Trim();
         }
 
         // Fallback if parsing fails
