@@ -3,6 +3,7 @@ using Protector.Application.DTOs;
 using Protector.Application.UseCases;
 using Protector.Infrastructure;
 using Protector.Infrastructure.Analyzers.Feroxbuster;
+using Protector.Infrastructure.Analyzers.Semgrep;
 using Protector.Infrastructure.Analyzers.Httpx;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.CLI.Reports;
@@ -11,6 +12,14 @@ using Spectre.Console;
 ConsoleReporter.PrintBanner();
 
 // Handle --install-nuclei before anything else
+if (args.Contains("--install-semgrep"))
+{
+    await SemgrepDownloader.EnsureInstalledAsync(
+        progress: msg => AnsiConsole.MarkupLine($"[grey]  » {Markup.Escape(msg)}[/]"));
+    AnsiConsole.MarkupLine("[green]semgrep ready.[/] Run a scan with --source to use it.");
+    return 0;
+}
+
 if (args.Contains("--install-feroxbuster"))
 {
     await FeroxbusterDownloader.EnsureInstalledAsync(

@@ -3,6 +3,7 @@ using Protector.Application.UseCases;
 using Protector.Domain.Interfaces;
 using Protector.Infrastructure.Analyzers.Http;
 using Protector.Infrastructure.Analyzers.Feroxbuster;
+using Protector.Infrastructure.Analyzers.Semgrep;
 using Protector.Infrastructure.Analyzers.Httpx;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
@@ -62,6 +63,10 @@ public static class ServiceCollectionExtensions
         // Static code analyzers
         services.AddScoped<IStaticCodeAnalyzer, CSharpCodeAnalyzer>();
         services.AddScoped<IStaticCodeAnalyzer, ReactCodeAnalyzer>();
+
+        // Semgrep — professional static analysis (replaces basic regex when available)
+        if (SemgrepDownloader.IsInstalled)
+            services.AddScoped<IStaticCodeAnalyzer, SemgrepAnalyzer>();
 
         // Web crawler
         services.AddScoped<IWebCrawler, WebCrawler>();
