@@ -5,6 +5,7 @@ using Protector.API.Models;
 using Protector.Application.DTOs;
 using Protector.Application.UseCases;
 using Protector.Domain.Entities;
+using ScanMode = Protector.Application.DTOs.ScanMode;
 
 namespace Protector.API.Controllers;
 
@@ -76,11 +77,12 @@ public sealed class ScanController : ControllerBase
             useCase.OnProgress += async msg =>
                 await _hubContext.Clients.Group(scanId).SendAsync("Progress", msg);
 
+            var mode = Enum.TryParse<ScanMode>(request.Mode, true, out var m) ? m : ScanMode.Standard;
             var scanRequest = new ScanRequest
             {
                 Url = request.Url,
                 SourceCodePath = request.SourceCodePath,
-                MaxDepth = request.MaxDepth,
+                Mode = mode,
                 TimeoutSeconds = request.TimeoutSeconds
             };
 

@@ -21,7 +21,8 @@ export default function App() {
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
-  const { status, progress, result, startScan, reset } = useScan()
+  const [scanMode, setScanMode] = useState<'Quick' | 'Standard' | 'Deep'>('Standard')
+  const { status, progress, result, ollamaOnline, stages, startScan, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function App() {
   const handleScan = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setActiveFilter(null)
-    if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined)
+    if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined, scanMode)
   }
 
   return (
@@ -55,10 +56,18 @@ export default function App() {
               <p className="text-white/40 text-xs font-mono uppercase tracking-[0.3em] mt-2 italic font-bold">Web Vulnerability Scanner</p>
             </div>
           </motion.div>
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-end gap-2">
             <div className="flex items-center gap-2 text-xs font-mono text-neon-secondary neon-text-secondary uppercase tracking-widest bg-neon-secondary/5 border border-neon-secondary/20 px-4 py-2 rounded-lg">
               <span className="w-2 h-2 rounded-full bg-neon-secondary animate-pulse shadow-[0_0_8px_var(--color-neon-secondary)]" />
               System Ready
+            </div>
+            <div className={`flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-lg border ${
+              ollamaOnline
+                ? 'text-neon-primary border-neon-primary/20 bg-neon-primary/5'
+                : 'text-white/20 border-white/10 bg-white/5'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${ollamaOnline ? 'bg-neon-primary animate-pulse' : 'bg-white/20'}`} />
+              AI {ollamaOnline ? 'Online' : 'Offline'}
             </div>
           </motion.div>
         </header>
@@ -105,7 +114,39 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-                <div className="flex flex-col items-center pt-8">
+                {/* Scan Mode Selector */}
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">Scan Mode</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {([
+                      { mode: 'Quick',    label: 'Quick',    desc: '~30s • HTTP analyzers',         color: 'neon-primary' },
+                      { mode: 'Standard', label: 'Standard', desc: '~1min • HTTP analyzers',        color: 'neon-secondary' },
+                      { mode: 'Deep',     label: 'Deep',     desc: '~15min • + Full Nuclei scan',   color: 'neon-accent' },
+                    ] as const).map(({ mode, label, desc, color }) => (
+                      <motion.button
+                        key={mode}
+                        type="button"
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setScanMode(mode)}
+                        className={`glass-card rounded-2xl p-4 border text-left transition-all ${
+                          scanMode === mode
+                            ? `border-${color}/60 bg-${color}/10 shadow-[0_0_20px_rgba(0,0,0,0.3)]`
+                            : 'border-white/5 hover:border-white/20'
+                        }`}
+                      >
+                        <div className={`text-sm font-black uppercase tracking-wider mb-1 ${scanMode === mode ? `text-${color}` : 'text-white/60'}`}>
+                          {label}
+                        </div>
+                        <div className="text-[10px] text-white/30">{desc}</div>
+                        {scanMode === mode && (
+                          <div className={`mt-2 w-1.5 h-1.5 rounded-full bg-${color} animate-pulse`} />
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center pt-4">
                   <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(0,255,157,0.4)' }} whileTap={{ scale: 0.98 }} type="submit"
                     className="group relative px-16 py-6 bg-neon-primary rounded-2xl text-[#020203] font-black uppercase tracking-[0.3em] overflow-hidden shadow-2xl shadow-neon-primary/20 btn-glow-primary">
                     <span className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -119,51 +160,105 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* RUNNING — Terminal */}
+          {/* RUNNING — Pipeline */}
           {status === 'running' && (
-            <motion.div key="running" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-              <div className="glass-card rounded-3xl p-8 border border-neon-secondary/20 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-6">
+            <motion.div key="running" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+
+              {/* Header */}
+              <div className="glass-card rounded-3xl p-6 border border-neon-secondary/20 flex items-center justify-between">
+                <div className="flex items-center gap-5">
                   <div className="relative">
                     <div className="absolute inset-0 bg-neon-secondary blur-xl opacity-30 animate-pulse" />
-                    <div className="relative w-16 h-16 glass-card rounded-2xl flex items-center justify-center border border-neon-secondary/50">
-                      <Activity className="w-8 h-8 text-neon-secondary neon-text-secondary animate-[pulse_1.2s_ease-in-out_infinite]" />
+                    <div className="relative w-14 h-14 glass-card rounded-2xl flex items-center justify-center border border-neon-secondary/50">
+                      <Activity className="w-7 h-7 text-neon-secondary animate-pulse" />
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight leading-none mb-2">Engaging Analysis</h2>
-                    <span className="font-mono text-xs text-neon-secondary/60 truncate max-w-[300px] italic block">{url}</span>
+                    <h2 className="text-xl font-bold text-white mb-1">Engaging Analysis</h2>
+                    <span className="font-mono text-xs text-neon-secondary/60 truncate max-w-[300px] block">{url}</span>
                   </div>
                 </div>
-                <div className="text-neon-primary font-black text-3xl italic tracking-tighter neon-text-primary">SCANNING...</div>
+                <div className="text-neon-primary font-black text-2xl italic neon-text-primary">SCANNING...</div>
               </div>
 
-              <div className="glass-card rounded-[2rem] overflow-hidden border border-white/5">
-                <div className="bg-white/5 px-6 py-4 flex items-center justify-between border-b border-white/5">
-                  <div className="flex items-center gap-3">
-                    <Terminal className="w-4 h-4 text-neon-secondary" />
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em]">Live Intelligence Log</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full border border-neon-primary bg-neon-primary/20 animate-pulse" />
-                  </div>
-                </div>
-                <div className="p-8 h-[400px] overflow-y-auto font-mono text-[13px] leading-relaxed bg-black/50">
-                  <AnimatePresence>
-                    {progress.map((msg: string, i: number) => (
-                      <motion.div key={i} initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}
-                        className="mb-2.5 flex gap-5 group hover:bg-white/5 px-3 py-1 rounded-lg transition-colors">
-                        <span className="text-neon-secondary/30 select-none shrink-0 font-bold">{String(i + 1).padStart(3, '0')}</span>
-                        <span className="text-white/70 group-last:text-neon-primary group-last:font-bold">
-                          {msg.includes('[ALERT]') && <span className="text-neon-accent mr-2">⚠</span>}
-                          {msg}
-                        </span>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                  <div ref={terminalEndRef} />
-                </div>
+              {/* Stage Pipeline */}
+              <div className="space-y-3">
+                {([
+                  { key: 'crawl',  label: 'Crawling',         icon: Globe,    color: 'neon-secondary' },
+                  { key: 'http',   label: 'HTTP Analyzers',   icon: Shield,   color: 'neon-primary' },
+                  { key: 'nuclei', label: 'Nuclei Scanner',   icon: Radar,    color: 'orange-400' },
+                  { key: 'static', label: 'Static Analysis',  icon: Cpu,      color: 'yellow-400' },
+                  { key: 'ai',     label: 'AI Enrichment',    icon: Activity, color: 'neon-accent' },
+                ] as const).map(({ key, label, icon: Icon, color }) => {
+                  const stage = stages[key]
+                  const pct = stage ? Math.round((stage.done / Math.max(stage.total, 1)) * 100) : 0
+                  const isDone = pct === 100
+                  const isActive = !!stage && !isDone
+
+                  return (
+                    <motion.div
+                      key={key}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: stage ? 1 : 0.3, x: 0 }}
+                      className={`glass-card rounded-2xl p-5 border transition-all ${
+                        isDone ? 'border-white/20' : isActive ? `border-${color}/40` : 'border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 mb-3">
+                        <div className={`p-2 rounded-xl ${isActive ? `bg-${color}/20` : 'bg-white/5'}`}>
+                          <Icon className={`w-4 h-4 ${isActive ? `text-${color}` : isDone ? 'text-white/60' : 'text-white/20'}`} />
+                        </div>
+                        <span className={`text-sm font-bold uppercase tracking-wider ${
+                          isDone ? 'text-white/60' : isActive ? `text-${color}` : 'text-white/20'
+                        }`}>{label}</span>
+                        <div className="ml-auto flex items-center gap-3">
+                          {isDone && <span className="text-[10px] text-white/40 font-mono">✓ Done</span>}
+                          {isActive && (
+                            <span className={`text-[10px] font-mono text-${color}/70`}>
+                              {stage.done}/{stage.total}
+                            </span>
+                          )}
+                          <span className={`text-sm font-black ${isDone ? 'text-white/40' : `text-${color}`}`}>
+                            {stage ? `${pct}%` : '—'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${isDone ? 'bg-white/30' : `bg-${color}`}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.3, ease: 'easeOut' }}
+                        />
+                      </div>
+
+                      {/* Current message */}
+                      {isActive && stage.message && (
+                        <p className="text-[10px] text-white/30 font-mono mt-2 truncate">{stage.message}</p>
+                      )}
+                    </motion.div>
+                  )
+                })}
               </div>
+
+              {/* Log */}
+              {progress.length > 0 && (
+                <div className="glass-card rounded-2xl overflow-hidden border border-white/5">
+                  <div className="bg-white/5 px-5 py-3 flex items-center gap-3 border-b border-white/5">
+                    <Terminal className="w-4 h-4 text-neon-secondary" />
+                    <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Log</span>
+                  </div>
+                  <div className="p-5 h-40 overflow-y-auto font-mono text-xs bg-black/50" ref={terminalEndRef}>
+                    {progress.slice(-20).map((msg, i) => (
+                      <div key={i} className="text-white/40 py-0.5">
+                        <span className="text-neon-secondary/30 mr-3">{String(i + 1).padStart(3, '0')}</span>{msg}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
 

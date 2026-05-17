@@ -15,7 +15,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
     private readonly HttpClient _http;
     private readonly string _model;
 
-    public OllamaEnricher(IHttpClientFactory factory, string model = "codellama")
+    public OllamaEnricher(IHttpClientFactory factory, string model = "llama3.2:3b")
     {
         _http = factory.CreateClient("scanner");
         _model = model;
@@ -82,24 +82,25 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
 
         if (targets.Count == 0) return results;
 
-        progress?.Invoke($"Enriching {targets.Count} critical/high findings with AI...");
+        var total = targets.Count;
+        var done = 0;
 
-        var semaphore = new SemaphoreSlim(3);
+        progress?.Invoke($"AI_PROGRESS:0:{total}:Starting AI analysis...");
 
-        var tasks = targets.Select(async vuln =>
+        // Process sequentially for predictable progress (not parallel)
+        foreach (var vuln in targets)
         {
-            await semaphore.WaitAsync(ct);
-            try
-            {
-                progress?.Invoke($"  [Ollama] Analyzing: {vuln.Title}");
-                var insight = await EnrichAsync(vuln, ct);
-                if (insight is not null)
-                    lock (results) results[vuln.Id] = insight;
-            }
-            finally { semaphore.Release(); }
-        });
+            ct.ThrowIfCancellationRequested();
+            progress?.Invoke($"AI_PROGRESS:{done}:{total}:Analyzing: {vuln.Title}");
 
-        await Task.WhenAll(tasks);
+            var insight = await EnrichAsync(vuln, ct);
+            if (insight is not null)
+                results[vuln.Id] = insight;
+
+            done++;
+            progress?.Invoke($"AI_PROGRESS:{done}:{total}:{(done == total ? "AI analysis complete!" : $"Analyzed {done}/{total}")}");
+        }
+
         return results;
     }
 
