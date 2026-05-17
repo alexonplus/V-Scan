@@ -68,7 +68,7 @@ export default function App() {
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ollamaOnline ? 'bg-neon-primary animate-pulse' : 'bg-white/20'}`} />
               {ollamaOnline
-                ? <><span className="text-neon-primary font-black">phi3:mini</span><span className="text-white/30 ml-1">· local</span></>
+                ? <><span className="text-neon-primary font-black uppercase tracking-widest">AI Connected</span><span className="text-white/30 ml-1">· local</span></>
                 : <span className="uppercase tracking-widest">AI · not running</span>
               }
             </div>
