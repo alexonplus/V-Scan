@@ -2,6 +2,7 @@
 using Protector.Application.DTOs;
 using Protector.Application.UseCases;
 using Protector.Infrastructure;
+using Protector.Infrastructure.Analyzers.Httpx;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.CLI.Reports;
 using Spectre.Console;
@@ -9,6 +10,14 @@ using Spectre.Console;
 ConsoleReporter.PrintBanner();
 
 // Handle --install-nuclei before anything else
+if (args.Contains("--install-httpx"))
+{
+    await HttpxDownloader.EnsureInstalledAsync(
+        progress: msg => AnsiConsole.MarkupLine($"[grey]  » {Markup.Escape(msg)}[/]"));
+    AnsiConsole.MarkupLine("[green]httpx ready.[/] Run a scan to use it.");
+    return 0;
+}
+
 if (args.Contains("--install-nuclei"))
 {
     await NucleiDownloader.EnsureInstalledAsync(
