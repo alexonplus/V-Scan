@@ -468,7 +468,16 @@ function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardPr
             <Icon className="w-6 h-6" />
           </div>
           <div>
-            <span className="text-base font-bold text-white uppercase italic group-hover:translate-x-1 transition-transform block">{vuln.title}</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-base font-bold text-white uppercase italic group-hover:translate-x-1 transition-transform">{vuln.title}</span>
+              {/* AI badge — visible on collapsed card */}
+              {aiInsight && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neon-secondary/20 border border-neon-secondary/30 text-[9px] font-black text-neon-secondary uppercase tracking-widest shrink-0">
+                  <Activity className="w-2.5 h-2.5" />
+                  AI
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-4 mt-1">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">{vuln.category}</span>
               {vuln.cweId && <span className="text-[11px] font-mono text-neon-secondary/40">{vuln.cweId}</span>}
@@ -486,23 +495,29 @@ function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardPr
             <div className="px-8 pb-10 pt-4 space-y-8 border-t border-white/5 bg-white/[0.01]">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                 <div className="lg:col-span-8 space-y-6">
-                  <p className="text-base text-white/60 leading-relaxed font-medium pl-5 border-l border-white/10 italic">{vuln.description}</p>
 
-                  {/* AI Insight block — shown only when Ollama is running */}
+                  {/* AI Analysis — shown FIRST, most prominent */}
                   {aiInsight && (
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="glass-card border border-neon-secondary/30 bg-neon-secondary/5 rounded-2xl p-6"
+                      className="glass-card border border-neon-secondary/40 bg-neon-secondary/8 rounded-2xl p-6 relative overflow-hidden"
                     >
-                      <h4 className="text-[10px] font-black text-neon-secondary uppercase tracking-[0.5em] mb-3 flex items-center gap-2">
-                        <Activity className="w-4 h-4" />
-                        AI Analysis
-                        <span className="text-white/20 font-normal normal-case tracking-normal ml-1">via Ollama</span>
-                      </h4>
-                      <p className="text-neon-secondary/70 text-sm leading-relaxed">{aiInsight}</p>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-neon-secondary/10 blur-[60px] pointer-events-none" />
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 rounded-lg bg-neon-secondary/30">
+                          <Activity className="w-3.5 h-3.5 text-neon-secondary" />
+                        </div>
+                        <span className="text-[10px] font-black text-neon-secondary uppercase tracking-[0.4em]">
+                          AI Analysis
+                        </span>
+                        <span className="text-[9px] text-white/25 font-mono ml-1">by Ollama · llama3.2</span>
+                      </div>
+                      <p className="text-neon-secondary/80 text-sm leading-relaxed font-medium">{aiInsight}</p>
                     </motion.div>
                   )}
+
+                  <p className="text-base text-white/60 leading-relaxed font-medium pl-5 border-l border-white/10 italic">{vuln.description}</p>
 
                   <div className="glass-card border border-green-500/30 bg-green-500/5 rounded-2xl p-8">
                     <h4 className="text-[10px] font-black text-green-400 uppercase tracking-[0.5em] mb-3 flex items-center gap-2">
