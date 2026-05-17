@@ -15,7 +15,7 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
     private readonly HttpClient _http;
     private readonly string _model;
 
-    public OllamaEnricher(IHttpClientFactory factory, string model = "llama3.2:3b")
+    public OllamaEnricher(IHttpClientFactory factory, string model = "phi3:mini")
     {
         _http = factory.CreateClient("scanner");
         _model = model;
@@ -75,9 +75,12 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
     {
         var results = new Dictionary<string, string>();
 
-        // Only enrich High and Critical — saves time, focuses on what matters
+        // Only enrich High and Critical, deduplicated by title
+        // Same vuln type on multiple URLs → analyze once, apply to all
         var targets = vulnerabilities
             .Where(v => v.Severity is Domain.Enums.Severity.Critical or Domain.Enums.Severity.High)
+            .GroupBy(v => v.Title.ToLowerInvariant())
+            .Select(g => g.First())
             .ToList();
 
         if (targets.Count == 0) return results;
@@ -85,9 +88,11 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
         var total = targets.Count;
         var done = 0;
 
+        // Cache: title → insight (so all duplicates of same vuln get same AI text)
+        var cache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         progress?.Invoke($"AI_PROGRESS:0:{total}:Starting AI analysis...");
 
-        // Process sequentially for predictable progress (not parallel)
         foreach (var vuln in targets)
         {
             ct.ThrowIfCancellationRequested();
@@ -95,10 +100,18 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
 
             var insight = await EnrichAsync(vuln, ct);
             if (insight is not null)
-                results[vuln.Id] = insight;
+                cache[vuln.Title] = insight;
 
             done++;
             progress?.Invoke($"AI_PROGRESS:{done}:{total}:{(done == total ? "AI analysis complete!" : $"Analyzed {done}/{total}")}");
+        }
+
+        // Apply cached insight to ALL vulns with same title (including duplicates)
+        foreach (var vuln in vulnerabilities
+            .Where(v => v.Severity is Domain.Enums.Severity.Critical or Domain.Enums.Severity.High))
+        {
+            if (cache.TryGetValue(vuln.Title, out var cached))
+                results[vuln.Id] = cached;
         }
 
         return results;
