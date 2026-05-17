@@ -17,7 +17,8 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
 
     public OllamaEnricher(IHttpClientFactory factory, string model = "phi3:mini")
     {
-        _http = factory.CreateClient("scanner");
+        // Use dedicated "ollama" client with 3min timeout — "scanner" client has only 15s
+        _http = factory.CreateClient("ollama");
         _model = model;
     }
 

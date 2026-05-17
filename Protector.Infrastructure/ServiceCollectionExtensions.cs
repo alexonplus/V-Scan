@@ -18,8 +18,7 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddProtector(this IServiceCollection services)
     {
-        // HttpClient factory — shared, thread-safe, handles connection pooling
-        // Configured to skip SSL validation so we can scan sites with bad certs
+        // Scanner client — for HTTP vulnerability checks, 15s timeout
         services.AddHttpClient("scanner", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(15);
@@ -29,6 +28,13 @@ public static class ServiceCollectionExtensions
             ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
             AllowAutoRedirect = true,
             MaxAutomaticRedirections = 5
+        });
+
+        // Ollama client — for local LLM inference, needs longer timeout
+        services.AddHttpClient("ollama", client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(3);
+            client.BaseAddress = new Uri("http://localhost:11434");
         });
 
         // HTTP analyzers — each registered as IVulnerabilityAnalyzer
