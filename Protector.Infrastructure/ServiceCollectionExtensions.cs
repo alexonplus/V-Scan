@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Protector.Application.UseCases;
 using Protector.Domain.Interfaces;
 using Protector.Infrastructure.Analyzers.Http;
+using Protector.Infrastructure.Analyzers.Httpx;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
 using Protector.Infrastructure.Crawler;
@@ -39,7 +40,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVulnerabilityAnalyzer, CsrfAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, SslAnalyzer>();
 
-        // Nuclei — only registered if binary is present, skipped otherwise
+        // httpx — fast tech fingerprinting, active in Standard + Deep
+        if (HttpxDownloader.IsInstalled)
+            services.AddScoped<IVulnerabilityAnalyzer, HttpxAnalyzer>();
+
+        // Nuclei — deep CVE scanning, active in Deep mode only
         if (NucleiDownloader.IsInstalled)
             services.AddScoped<IVulnerabilityAnalyzer, NucleiAnalyzer>();
 
