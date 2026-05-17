@@ -17,6 +17,7 @@ export function useScan() {
   const [result, setResult] = useState<ScanResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null)
+  const [aiProgress, setAiProgress] = useState<{ done: number; total: number; message: string } | null>(null)
   const connectionRef = useRef<signalR.HubConnection | null>(null)
 
   useEffect(() => {
@@ -58,7 +59,13 @@ export function useScan() {
       connectionRef.current = connection
 
       connection.on('Progress', (msg: string) => {
-        setProgress(prev => [...prev, msg])
+        // Parse AI progress messages: "AI_PROGRESS:done:total:message"
+        if (msg.startsWith('AI_PROGRESS:')) {
+          const [, done, total, ...rest] = msg.split(':')
+          setAiProgress({ done: Number(done), total: Number(total), message: rest.join(':') })
+        } else {
+          setProgress(prev => [...prev, msg])
+        }
       })
 
       connection.on('Completed', (data: ScanResult) => {
@@ -88,7 +95,8 @@ export function useScan() {
     setProgress([])
     setResult(null)
     setError(null)
+    setAiProgress(null)
   }, [])
 
-  return { status, progress, result, error, ollamaOnline, startScan, reset }
+  return { status, progress, result, error, ollamaOnline, aiProgress, startScan, reset }
 }

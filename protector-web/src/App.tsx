@@ -22,7 +22,7 @@ export default function App() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
   const [scanMode, setScanMode] = useState<'Quick' | 'Standard' | 'Deep'>('Standard')
-  const { status, progress, result, ollamaOnline, startScan, reset } = useScan()
+  const { status, progress, result, ollamaOnline, aiProgress, startScan, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -204,6 +204,37 @@ export default function App() {
                   </AnimatePresence>
                   <div ref={terminalEndRef} />
                 </div>
+
+                {/* AI Progress Bar — shown only when Ollama is enriching */}
+                {aiProgress && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border-t border-white/5 p-6 bg-neon-primary/5"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2 text-xs font-black text-neon-primary uppercase tracking-widest">
+                        <Activity className="w-3.5 h-3.5 animate-pulse" />
+                        AI Analysis
+                      </div>
+                      <span className="text-xs font-mono text-neon-primary/60">
+                        {aiProgress.done} / {aiProgress.total}
+                      </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden mb-3">
+                      <motion.div
+                        className="h-full bg-neon-primary rounded-full shadow-[0_0_8px_var(--color-neon-primary)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${aiProgress.total > 0 ? (aiProgress.done / aiProgress.total) * 100 : 0}%` }}
+                        transition={{ duration: 0.4, ease: 'easeOut' }}
+                      />
+                    </div>
+
+                    <p className="text-xs text-white/40 font-mono truncate">{aiProgress.message}</p>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           )}
