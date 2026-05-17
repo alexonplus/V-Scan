@@ -143,6 +143,15 @@ public sealed class RunScanUseCase
                     ct);
                 result.SetAiInsights(insights);
             }
+
+            // Generate overall AI scan report
+            StageProgress("ai", aiTotal, aiTotal, "Generating AI security report...");
+            var report = await _enricher!.GenerateReportAsync(
+                result.Vulnerabilities,
+                request.Url,
+                ct);
+            if (report is not null)
+                result.SetAiReport(report);
         }
 
         result.Complete();

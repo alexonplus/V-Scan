@@ -118,6 +118,13 @@ public sealed class ScanController : ControllerBase
             Info = result.Summary.Info,
             RiskScore = result.Summary.RiskScore,
             ScannedUrls = result.ScannedUrls,
+            AiInsights = result.AiInsights,
+            AiReport = result.AiReport is null ? null : new AiReportDto
+            {
+                Summary = result.AiReport.Summary,
+                TopPriorities = result.AiReport.TopPriorities,
+                OverallRisk = result.AiReport.OverallRisk
+            },
             Vulnerabilities = result.Vulnerabilities.Select(v => new VulnerabilityDto
             {
                 Id = v.Id,

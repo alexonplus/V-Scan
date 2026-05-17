@@ -31,6 +31,13 @@ public sealed class VulnerabilityDto
     public required string Remediation { get; init; }
 }
 
+public sealed class AiReportDto
+{
+    public required string Summary { get; init; }
+    public required IEnumerable<string> TopPriorities { get; init; }
+    public required string OverallRisk { get; init; }
+}
+
 public sealed class ScanResultResponse
 {
     public required string ScanId { get; init; }
@@ -46,4 +53,6 @@ public sealed class ScanResultResponse
     public required int RiskScore { get; init; }
     public required IEnumerable<VulnerabilityDto> Vulnerabilities { get; init; }
     public required IEnumerable<string> ScannedUrls { get; init; }
+    public required IReadOnlyDictionary<string, string> AiInsights { get; init; }
+    public AiReportDto? AiReport { get; init; }
 }

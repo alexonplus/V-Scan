@@ -104,6 +104,97 @@ public sealed class OllamaEnricher : IVulnerabilityEnricher
         return results;
     }
 
+    public async Task<AiScanReport?> GenerateReportAsync(
+        IEnumerable<Vulnerability> vulnerabilities,
+        string targetUrl,
+        CancellationToken ct = default)
+    {
+        var vulnList = vulnerabilities.ToList();
+        if (vulnList.Count == 0) return null;
+
+        var prompt = BuildReportPrompt(vulnList, targetUrl);
+
+        try
+        {
+            var request = new OllamaRequest
+            {
+                Model = _model,
+                Prompt = prompt,
+                Stream = false,
+                Options = new OllamaOptions { NumPredict = 500, Temperature = 0.3 }
+            };
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(45));
+
+            var httpResponse = await _http.PostAsJsonAsync(OllamaUrl, request, cts.Token);
+            if (!httpResponse.IsSuccessStatusCode) return null;
+
+            var result = await httpResponse.Content
+                .ReadFromJsonAsync<OllamaResponse>(cancellationToken: cts.Token);
+
+            return ParseReport(result?.Response?.Trim() ?? "");
+        }
+        catch { return null; }
+    }
+
+    private static string BuildReportPrompt(List<Vulnerability> vulns, string targetUrl)
+    {
+        var groups = vulns
+            .GroupBy(v => v.Severity)
+            .OrderByDescending(g => g.Key)
+            .Select(g => $"{g.Key} ({g.Count()}): {string.Join(", ", g.Select(v => v.Title).Take(3))}");
+
+        return $"""
+            You are a security expert. Analyze these scan results for {targetUrl}.
+
+            Vulnerabilities found:
+            {string.Join("\n", groups)}
+            Total: {vulns.Count}
+
+            Respond in EXACTLY this format (no extra text):
+            SUMMARY: [2-3 sentences about overall security posture]
+            PRIORITY1: [most critical fix]
+            PRIORITY2: [second most important fix]
+            PRIORITY3: [third fix]
+            RISK: [Low/Medium/High/Critical]
+            """;
+    }
+
+    private static AiScanReport ParseReport(string response)
+    {
+        var lines = response.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        string summary = "AI analysis complete.";
+        var priorities = new List<string>();
+        string risk = "Medium";
+
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("SUMMARY:"))
+                summary = line["SUMMARY:".Length..].Trim();
+            else if (line.StartsWith("PRIORITY1:") || line.StartsWith("PRIORITY2:") || line.StartsWith("PRIORITY3:"))
+                priorities.Add(line[line.IndexOf(':') + 1..].Trim());
+            else if (line.StartsWith("RISK:"))
+                risk = line["RISK:".Length..].Trim();
+        }
+
+        // Fallback if parsing fails
+        if (priorities.Count == 0 && response.Length > 10)
+        {
+            summary = response.Length > 300 ? response[..300] + "..." : response;
+            priorities = ["Review and fix Critical/High findings first"];
+            risk = "High";
+        }
+
+        return new AiScanReport
+        {
+            Summary = summary,
+            TopPriorities = priorities,
+            OverallRisk = risk
+        };
+    }
+
     private static string BuildPrompt(Vulnerability vuln)
     {
         var location = vuln.FilePath is not null
