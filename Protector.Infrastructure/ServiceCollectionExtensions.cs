@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Protector.Application.UseCases;
 using Protector.Domain.Interfaces;
 using Protector.Infrastructure.Analyzers.Http;
+using Protector.Infrastructure.Analyzers.Feroxbuster;
 using Protector.Infrastructure.Analyzers.Httpx;
 using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
@@ -49,6 +50,10 @@ public static class ServiceCollectionExtensions
         // httpx — fast tech fingerprinting, active in Standard + Deep
         if (HttpxDownloader.IsInstalled)
             services.AddScoped<IVulnerabilityAnalyzer, HttpxAnalyzer>();
+
+        // feroxbuster — hidden path discovery, active in Standard + Deep
+        if (FeroxbusterDownloader.IsInstalled)
+            services.AddScoped<IVulnerabilityAnalyzer, FeroxbusterAnalyzer>();
 
         // Nuclei — deep CVE scanning, active in Deep mode only
         if (NucleiDownloader.IsInstalled)
