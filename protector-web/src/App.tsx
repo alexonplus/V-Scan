@@ -61,13 +61,16 @@ export default function App() {
               <span className="w-2 h-2 rounded-full bg-neon-secondary animate-pulse shadow-[0_0_8px_var(--color-neon-secondary)]" />
               System Ready
             </div>
-            <div className={`flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest px-3 py-1.5 rounded-lg border ${
+            <div className={`flex items-center gap-2 text-[10px] font-mono px-3 py-1.5 rounded-lg border ${
               ollamaOnline
                 ? 'text-neon-primary border-neon-primary/20 bg-neon-primary/5'
                 : 'text-white/20 border-white/10 bg-white/5'
             }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${ollamaOnline ? 'bg-neon-primary animate-pulse' : 'bg-white/20'}`} />
-              AI {ollamaOnline ? 'Online' : 'Offline'}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${ollamaOnline ? 'bg-neon-primary animate-pulse' : 'bg-white/20'}`} />
+              {ollamaOnline
+                ? <><span className="text-neon-primary font-black">phi3:mini</span><span className="text-white/30 ml-1">· local</span></>
+                : <span className="uppercase tracking-widest">AI · not running</span>
+              }
             </div>
           </motion.div>
         </header>
@@ -426,7 +429,7 @@ function AiReportBlock({ report }: { report: AiReport }) {
             <h3 className="text-sm font-black text-neon-secondary uppercase tracking-[0.3em]">
               AI Security Report
             </h3>
-            <p className="text-[10px] text-white/30 font-mono mt-0.5">Analyzed by Ollama · llama3.2</p>
+            <p className="text-[10px] text-white/30 font-mono mt-0.5">Local AI · phi3:mini · private</p>
           </div>
         </div>
         <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest bg-${riskColor}/20 text-${riskColor} border border-${riskColor}/30`}>
@@ -514,7 +517,7 @@ function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardPr
                         <span className="text-[10px] font-black text-neon-secondary uppercase tracking-[0.4em]">
                           AI Analysis
                         </span>
-                        <span className="text-[9px] text-white/25 font-mono ml-1">by Ollama · llama3.2</span>
+                        <span className="text-[9px] text-white/25 font-mono ml-1">local · phi3:mini</span>
                       </div>
                       <p className="text-neon-secondary/80 text-sm leading-relaxed font-medium">{aiInsight}</p>
                     </motion.div>
