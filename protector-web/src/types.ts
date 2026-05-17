@@ -15,6 +15,12 @@ export interface Vulnerability {
   remediation: string
 }
 
+export interface AiReport {
+  summary: string
+  topPriorities: string[]
+  overallRisk: string
+}
+
 export interface ScanResult {
   scanId: string
   targetUrl: string
@@ -29,8 +35,8 @@ export interface ScanResult {
   riskScore: number
   vulnerabilities: Vulnerability[]
   scannedUrls: string[]
-  // vulnId → AI-generated insight from Ollama (present only if Ollama is running)
   aiInsights?: Record<string, string>
+  aiReport?: AiReport
 }
 
 export type ScanStatus = 'idle' | 'running' | 'completed' | 'error'

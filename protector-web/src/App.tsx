@@ -6,7 +6,7 @@ import {
   Activity, Cpu, Radar
 } from 'lucide-react'
 import { useScan } from './services/scanService'
-import type { Vulnerability, Severity } from './types'
+import type { Vulnerability, Severity, AiReport } from './types'
 
 const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: string; glow: string; icon: React.ElementType }> = {
   Critical: { color: 'text-neon-accent',    bg: 'bg-neon-accent/10',    border: 'border-neon-accent/40',    glow: 'shadow-[0_0_15px_rgba(255,0,200,0.3)]',  icon: AlertTriangle },
@@ -311,6 +311,9 @@ export default function App() {
                 </div>
               </div>
 
+              {/* AI Report — shown prominently when Ollama is available */}
+              {result.aiReport && <AiReportBlock report={result.aiReport} />}
+
               {/* Meta */}
               <div className="flex flex-wrap gap-4">
                 {[
@@ -394,6 +397,64 @@ interface VulnCardProps {
   isExpanded: boolean
   onToggle: () => void
   aiInsight?: string
+}
+
+function AiReportBlock({ report }: { report: AiReport }) {
+  const riskColor = {
+    Critical: 'neon-accent', High: 'orange-400',
+    Medium: 'yellow-400', Low: 'neon-primary'
+  }[report.overallRisk] ?? 'neon-secondary'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="glass-card rounded-[2rem] p-8 border border-neon-secondary/30 bg-neon-secondary/5 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-64 h-64 bg-neon-secondary/5 blur-[100px] pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-neon-secondary/20">
+            <Activity className="w-5 h-5 text-neon-secondary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-neon-secondary uppercase tracking-[0.3em]">
+              AI Security Report
+            </h3>
+            <p className="text-[10px] text-white/30 font-mono mt-0.5">Analyzed by Ollama · llama3.2</p>
+          </div>
+        </div>
+        <div className={`px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest bg-${riskColor}/20 text-${riskColor} border border-${riskColor}/30`}>
+          {report.overallRisk} Risk
+        </div>
+      </div>
+
+      {/* Summary */}
+      <p className="text-white/70 leading-relaxed mb-6 pl-4 border-l-2 border-neon-secondary/30 italic">
+        {report.summary}
+      </p>
+
+      {/* Top Priorities */}
+      {report.topPriorities.length > 0 && (
+        <div>
+          <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.4em] mb-4 flex items-center gap-2">
+            <Zap className="w-3.5 h-3.5 text-neon-secondary" />
+            Top Priorities to Fix
+          </h4>
+          <div className="space-y-2">
+            {report.topPriorities.map((p, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                <span className="text-neon-secondary font-black text-sm shrink-0 w-5">{i + 1}.</span>
+                <span className="text-white/70 text-sm">{p}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  )
 }
 
 function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardProps) {
