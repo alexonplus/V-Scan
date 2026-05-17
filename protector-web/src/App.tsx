@@ -119,9 +119,9 @@ export default function App() {
                   <label className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2 block">Scan Mode</label>
                   <div className="grid grid-cols-3 gap-3">
                     {([
-                      { mode: 'Quick',    label: 'Quick',    desc: '~30s • Headers only',          color: 'neon-primary' },
-                      { mode: 'Standard', label: 'Standard', desc: '~2min • + Nuclei top CVEs',    color: 'neon-secondary' },
-                      { mode: 'Deep',     label: 'Deep',     desc: '~10min • Full Nuclei scan',    color: 'neon-accent' },
+                      { mode: 'Quick',    label: 'Quick',    desc: '~30s • HTTP analyzers',         color: 'neon-primary' },
+                      { mode: 'Standard', label: 'Standard', desc: '~1min • HTTP analyzers',        color: 'neon-secondary' },
+                      { mode: 'Deep',     label: 'Deep',     desc: '~15min • + Full Nuclei scan',   color: 'neon-accent' },
                     ] as const).map(({ mode, label, desc, color }) => (
                       <motion.button
                         key={mode}
