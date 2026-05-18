@@ -1,12 +1,12 @@
 # V-Scan — Web Vulnerability Scanner
 
-> A professional-grade web vulnerability scanner combining custom security analyzers,
-> industry-leading open-source tools, and local AI analysis — all in one interface.
+V-Scan helps you find security vulnerabilities in websites. Point it at any URL and it
+will check for common security issues — missing headers, SQL injection, exposed files,
+weak configurations and more. It also uses a local AI model to explain what was found
+and what to fix first, in plain language.
 
-<!-- SCREENSHOT: Main UI screenshot here -->
+<!-- Add a screenshot here -->
 <!-- ![V-Scan UI](docs/screenshots/main.png) -->
-
-### Built with
 
 ![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -15,10 +15,8 @@
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 
-### CI Status
-
 ![CI](https://github.com/alexonplus/V-Scan/actions/workflows/ci.yml/badge.svg?branch=develop)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+![License](https://img.shields.io/badge/license-Polyform--NC-orange?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
 
 ---
