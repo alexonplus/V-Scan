@@ -82,7 +82,11 @@ public sealed class RunScanUseCase
                 .Where(a => a.Name != "Nuclei Scanner")
                 .Select(async analyzer =>
                 {
-                    try { return await analyzer.AnalyzeAsync(urlTarget, ct); }
+                    try
+                    {
+                        var found = await analyzer.AnalyzeAsync(urlTarget, ct);
+                        return found.Select(v => TagWith(v, analyzer.Name));
+                    }
                     catch { return Enumerable.Empty<Vulnerability>(); }
                 });
 
@@ -113,7 +117,7 @@ public sealed class RunScanUseCase
                     try
                     {
                         var vulns = await nucleiAnalyzer.AnalyzeAsync(urlTarget, ct);
-                        foreach (var v in vulns) result.AddVulnerability(v);
+                        foreach (var v in vulns) result.AddVulnerability(TagWith(v, "Nuclei Scanner"));
                     }
                     catch { }
                     StageProgress("nuclei", i + 1, urls.Count, $"Nuclei {i + 1}/{urls.Count}: {urls[i]}");
@@ -160,6 +164,16 @@ public sealed class RunScanUseCase
         return result;
     }
 
+    private static Vulnerability TagWith(Vulnerability v, string analyzerName) =>
+        v.FoundBy is not null ? v : new Vulnerability
+        {
+            Title = v.Title, Description = v.Description, Severity = v.Severity,
+            Category = v.Category, Remediation = v.Remediation, Url = v.Url,
+            Parameter = v.Parameter, Payload = v.Payload, Evidence = v.Evidence,
+            FilePath = v.FilePath, LineNumber = v.LineNumber, CweId = v.CweId,
+            OwaspCategory = v.OwaspCategory, FoundBy = analyzerName
+        };
+
     private async Task RunStaticAnalysisAsync(ScanResult result, string sourcePath, CancellationToken ct)
     {
         var extensionMap = _staticAnalyzers
@@ -182,7 +196,7 @@ public sealed class RunScanUseCase
                 {
                     var vulns = await analyzer.AnalyzeFileAsync(file, ct);
                     foreach (var vuln in vulns)
-                        result.AddVulnerability(vuln);
+                        result.AddVulnerability(TagWith(vuln, analyzer.Name));
                 }
                 catch { }
             }

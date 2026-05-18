@@ -29,6 +29,7 @@ public sealed class VulnerabilityDto
     public string? CweId { get; init; }
     public string? OwaspCategory { get; init; }
     public required string Remediation { get; init; }
+    public string? FoundBy { get; init; }
 }
 
 public sealed class AiReportDto
