@@ -22,6 +22,11 @@ and what to fix first, in plain language.
 ---
 
 ## Features
+<img width="1017" height="902" alt="1" src="https://github.com/user-attachments/assets/82580cca-be17-4a75-b84a-76d193da1479" />
+<img width="1062" height="882" alt="2" src="https://github.com/user-attachments/assets/5fcbb539-8e0c-4b06-89cc-e6ed3f8481c7" />
+<img width="1020" height="896" alt="3" src="https://github.com/user-attachments/assets/15747f35-138d-45f0-8cdb-439a3421a198" />
+
+
 
 ### Scan Modes
 | Mode | Time | What runs |
