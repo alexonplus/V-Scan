@@ -15,11 +15,30 @@ public sealed class ScanResult
     public IReadOnlyList<string> ScannedUrls => _scannedUrls;
     public ScanSummary Summary => new(this);
 
-    public void AddVulnerability(Vulnerability vulnerability) =>
-        _vulnerabilities.Add(vulnerability);
+    public IReadOnlyDictionary<string, string> AiInsights { get; private set; } =
+        new Dictionary<string, string>();
+
+    public Interfaces.AiScanReport? AiReport { get; private set; }
+
+    public void AddVulnerability(Vulnerability vulnerability)
+    {
+        // Deduplicate by title + category per domain — same header issue on 88 pages = 1 finding
+        var alreadyExists = _vulnerabilities.Any(v =>
+            v.Title.Equals(vulnerability.Title, StringComparison.OrdinalIgnoreCase) &&
+            v.Category == vulnerability.Category);
+
+        if (!alreadyExists)
+            _vulnerabilities.Add(vulnerability);
+    }
 
     public void AddScannedUrl(string url) =>
         _scannedUrls.Add(url);
+
+    public void SetAiInsights(Dictionary<string, string> insights) =>
+        AiInsights = insights;
+
+    public void SetAiReport(Interfaces.AiScanReport report) =>
+        AiReport = report;
 
     public void Complete() =>
         CompletedAt = DateTime.UtcNow;

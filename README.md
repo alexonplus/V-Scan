@@ -1,50 +1,210 @@
-# Protector — Web Vulnerability Scanner
+# V-Scan — Web Vulnerability Scanner
 
-A tool for analyzing vulnerabilities in web applications (React + C# backend).
-Supports two modes: **black-box** (HTTP requests to a live site) and **white-box** (static source code analysis).
+V-Scan helps you find security vulnerabilities in websites. Point it at any URL and it
+will check for common security issues — missing headers, SQL injection, exposed files,
+weak configurations and more. It also uses a local AI model to explain what was found
+and what to fix first, in plain language.
+
+<!-- Add a screenshot here -->
+<!-- ![V-Scan UI](docs/screenshots/main.png) -->
+
+![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
+![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
+![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
+
+![CI](https://github.com/alexonplus/V-Scan/actions/workflows/ci.yml/badge.svg?branch=develop)
+![License](https://img.shields.io/badge/license-Polyform--NC-orange?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
+
+---
+
+## Features
+<img width="1017" height="902" alt="1" src="https://github.com/user-attachments/assets/82580cca-be17-4a75-b84a-76d193da1479" />
+<img width="1062" height="882" alt="2" src="https://github.com/user-attachments/assets/5fcbb539-8e0c-4b06-89cc-e6ed3f8481c7" />
+<img width="1020" height="896" alt="3" src="https://github.com/user-attachments/assets/15747f35-138d-45f0-8cdb-439a3421a198" />
+
+
+
+### Scan Modes
+| Mode | Time | What runs |
+|---|---|---|
+| ⚡ **Quick** | ~30s | Our 6 HTTP analyzers |
+| 🔍 **Standard** | ~1-2 min | HTTP + httpx + feroxbuster |
+| 🔬 **Deep** | ~15 min | Everything + Nuclei (9000+ templates) |
+
+### Security Checks
+<!-- SCREENSHOT: Scan results page -->
+<!-- ![Scan Results](docs/screenshots/results.png) -->
+
+**HTTP Analyzers (black-box — live site)**
+- 🛡️ Security Headers — CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- 💉 SQL Injection — payload testing on URL parameters
+- ⚡ Cross-Site Scripting (XSS) — reflected XSS detection
+- 🌐 CORS Misconfiguration — wildcard and null origin checks
+- 🔒 CSRF — POST forms without anti-forgery tokens
+- 🔐 SSL/TLS — certificate expiry, HTTPS enforcement
+
+**External Tools (auto-downloaded)**
+- 🚀 **httpx** (Go) — fast tech fingerprinting: server version, frameworks, React/WordPress/etc.
+- 🦀 **feroxbuster** (Rust) — hidden path discovery: `/.env`, `/.git`, `/admin`, `/backup.zip`
+- ☢️ **Nuclei** (Go) — 9000+ CVE and misconfiguration templates *(Deep mode only)*
+- 🐍 **semgrep** (Python) — 5000+ static analysis rules for C#, JS, TypeScript, React
+
+**Static Code Analysis (white-box — source code)**
+- C# via Roslyn AST — SQL injection, hardcoded secrets, BinaryFormatter, MD5/SHA1
+- React/TypeScript — `dangerouslySetInnerHTML`, `eval()`, localStorage tokens, HTTP calls
+- semgrep OWASP Top 10 + CWE-25 rule packs *(when source path provided)*
+
+### AI Analysis (local & private)
+<!-- SCREENSHOT: AI Security Report block -->
+<!-- ![AI Report](docs/screenshots/ai-report.png) -->
+
+- 🤖 Powered by **Ollama** — runs entirely on your machine, no data sent to internet
+- **AI Security Report** — overall assessment + top 3 priorities to fix
+- **Per-vulnerability explanations** — plain language analysis on each High/Critical finding
+- Model: **phi3:mini** (2.3GB, optimized for CPU)
+
+### Real-time Progress Pipeline
+<!-- SCREENSHOT: Scanning progress pipeline -->
+<!-- ![Pipeline](docs/screenshots/pipeline.png) -->
+
+Each scan stage shows live progress:
+```
+🌐 Crawling          ████████████ 100% ✓
+🛡️ HTTP Analyzers    ████████████ 100% ✓
+📡 Nuclei Scanner    (Deep only)
+🤖 AI Enrichment     ████████░░░░  67%  1/2
+```
+
+---
 
 ## Architecture
 
+Clean Architecture with 4 layers:
+
 ```
-Protector.Domain/         <- Entities, interfaces (no external dependencies)
-Protector.Application/    <- Use cases, scan orchestration
-Protector.Infrastructure/ <- Implementations: HTTP, Roslyn, file system
-Protector.CLI/            <- Entry point, DI setup, console UI
-Protector.Tests/          <- Unit tests (xUnit + FluentAssertions)
+V-Scan/
+├── Protector.Domain/         ← Entities, interfaces (zero dependencies)
+├── Protector.Application/    ← Use cases, scan orchestration
+├── Protector.Infrastructure/ ← All analyzers and external tools
+│   ├── Analyzers/Http/       ← SQLi, XSS, CORS, CSRF, SSL, Headers
+│   ├── Analyzers/Static/     ← Roslyn (C#), React regex
+│   ├── Analyzers/Httpx/      ← httpx wrapper
+│   ├── Analyzers/Feroxbuster/← feroxbuster wrapper
+│   ├── Analyzers/Nuclei/     ← Nuclei wrapper
+│   ├── Analyzers/Semgrep/    ← semgrep wrapper
+│   ├── Crawler/              ← BFS web crawler
+│   └── Enrichers/            ← Ollama AI enrichment
+├── Protector.API/            ← ASP.NET Core Web API + SignalR
+├── Protector.CLI/            ← Command line interface
+├── Protector.Tests/          ← 21 unit tests
+└── protector-web/            ← React + TypeScript frontend
 ```
 
-## What It Checks
+---
 
-### HTTP Analyzers (black-box)
-| Check | Description |
+## Tech Stack
+
+### Backend (.NET 8)
+| Technology | Purpose |
 |---|---|
-| Security Headers | CSP, HSTS, X-Frame-Options, X-Content-Type-Options |
-| SQL Injection | Parameter testing with SQLi payloads |
-| XSS | Reflected XSS via forms and URL parameters |
-| CORS | Misconfigured Cross-Origin policies |
-| CSRF | Missing anti-forgery tokens |
-| SSL/TLS | Weak ciphers, outdated protocols |
-| Open Redirect | Unprotected redirects |
-| Info Disclosure | Version leaks, stack traces in responses |
+| **ASP.NET Core** | Web API |
+| **SignalR** | Real-time scan progress to frontend |
+| **Microsoft.CodeAnalysis (Roslyn)** | C# source code AST analysis |
+| **HtmlAgilityPack** | HTML parsing for CSRF/XSS checks |
+| **xUnit + FluentAssertions + NSubstitute** | Unit testing |
+| **Spectre.Console** | Rich CLI output |
+| **Microsoft.Extensions.DependencyInjection** | Dependency injection |
 
-### Static Code Analysis (white-box)
-| Check | Language |
+### Frontend
+| Technology | Purpose |
 |---|---|
-| SQL via string concatenation | C# |
-| Unsafe deserialization (`BinaryFormatter`) | C# |
-| Hardcoded credentials / API keys | C# / React |
-| `dangerouslySetInnerHTML` | React |
-| `eval()` and `Function()` | React/JS |
-| HTTP instead of HTTPS | React |
+| **React 19 + TypeScript** | UI framework |
+| **Vite** | Build tool |
+| **Tailwind CSS v4** | Styling |
+| **Framer Motion** | Animations |
+| **Lucide React** | Icons |
+| **@microsoft/signalr** | Real-time connection to API |
 
-## Usage
+### External Security Tools
+| Tool | Language | Install size | Purpose |
+|---|---|---|---|
+| **httpx** | Go | ~15 MB | Technology fingerprinting |
+| **feroxbuster** | Rust | ~8 MB | Directory & path enumeration |
+| **Nuclei** | Go | ~45 MB | CVE scanning (9000+ templates) |
+| **semgrep** | Python | via pip | Static code analysis (5000+ rules) |
+| **Ollama + phi3:mini** | Go + GGUF | ~2.3 GB | Local AI analysis |
+
+---
+
+## Installation
+
+### Prerequisites
+- [.NET 8 SDK](https://dotnet.microsoft.com/download)
+- [Node.js 18+](https://nodejs.org)
+- [Git](https://git-scm.com)
+
+### Clone & Setup
+```bash
+git clone https://github.com/alexonplus/V-Scan.git
+cd V-Scan
+dotnet restore
+cd protector-web && npm install && cd ..
+```
+
+### Install External Tools (optional but recommended)
+```bash
+# httpx — fast technology fingerprinting
+dotnet run --project Protector.CLI -- --install-httpx
+
+# feroxbuster — hidden path discovery (Rust)
+dotnet run --project Protector.CLI -- --install-feroxbuster
+
+# Nuclei — 9000+ CVE templates (Deep mode only)
+dotnet run --project Protector.CLI -- --install-nuclei
+
+# semgrep — static code analysis (requires Python 3.8+)
+pip install semgrep
+```
+
+### AI Setup (optional)
+```bash
+# 1. Download Ollama from https://ollama.ai
+# 2. Pull the model (~2.3 GB)
+ollama pull phi3:mini
+# 3. Ollama runs automatically in background
+```
+
+---
+
+## Running the Web UI
 
 ```bash
-# HTTP scan only
+# Terminal 1 — Start the API
+dotnet run --project Protector.API --launch-profile http
+
+# Terminal 2 — Start the frontend
+cd protector-web
+npm run dev
+
+# Open in browser
+# http://localhost:5173
+```
+
+## Running the CLI
+
+```bash
+# Basic HTTP scan
 dotnet run --project Protector.CLI -- --url https://example.com
 
-# HTTP + source code analysis
-dotnet run --project Protector.CLI -- --url https://example.com --source ./path/to/project
+# With source code analysis
+dotnet run --project Protector.CLI -- --url https://example.com --source ./path/to/code
+
+# Deep scan (includes Nuclei)
+dotnet run --project Protector.CLI -- --url https://example.com --mode Deep
 
 # Save HTML report
 dotnet run --project Protector.CLI -- --url https://example.com --report html --output ./reports
@@ -56,24 +216,22 @@ dotnet run --project Protector.CLI -- --url https://example.com --report html --
 dotnet test
 ```
 
+---
+
 ## Branch Strategy
 
-| Branch | Status | Description |
-|---|---|---|
-| `main` | stable | Production-ready code |
-| `develop` | active | Feature integration |
-| `feature/domain` | done | Domain layer |
-| `feature/infrastructure-http` | planned | HTTP analyzers |
-| `feature/infrastructure-static` | planned | Static code analysis |
-| `feature/application` | planned | Use cases |
-| `feature/cli` | planned | CLI interface |
-| `feature/tests` | planned | Unit tests |
+This project uses **GitFlow**:
 
-## Tech Stack
+```
+main        ← stable releases only
+develop     ← integration branch
+feature/*   ← individual features, merged via PR
+```
 
-- **.NET 8** — runtime
-- **Roslyn (Microsoft.CodeAnalysis.CSharp)** — C# source code analysis
-- **HtmlAgilityPack** — HTML parsing
-- **Spectre.Console** — rich CLI output
-- **xUnit + FluentAssertions + NSubstitute** — testing
-- **Microsoft.Extensions.DependencyInjection** — DI container
+All PRs require CI to pass (build + 21 tests) before merging.
+
+---
+
+## License
+
+MIT — free for personal and commercial use.

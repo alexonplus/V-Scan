@@ -45,8 +45,7 @@ TestResults/
 .DS_Store
 Thumbs.db
 
-## Reports output (generated at runtime)
-reports/
-*.html
-*.json
-!appsettings*.json
+## Reports output (generated at runtime — not source code)
+/reports/
+**/reports/*.html
+**/reports/*.json
