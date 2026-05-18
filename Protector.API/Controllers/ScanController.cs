@@ -138,7 +138,8 @@ public sealed class ScanController : ControllerBase
                 Evidence = v.Evidence,
                 CweId = v.CweId,
                 OwaspCategory = v.OwaspCategory,
-                Remediation = v.Remediation
+                Remediation = v.Remediation,
+                FoundBy = v.FoundBy
             })
         };
 }

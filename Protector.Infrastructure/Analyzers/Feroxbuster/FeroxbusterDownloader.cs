@@ -53,11 +53,16 @@ public static class FeroxbusterDownloader
 
     private static string? ParseDownloadUrl(string json)
     {
+        // Asset naming: x86_64-windows-feroxbuster.exe.zip / x86_64-linux-feroxbuster.zip
         var assetName = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-            ? "windows-x86_64.zip"
+            ? "x86_64-windows-feroxbuster.exe.zip"
             : RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                ? "apple-darwin.tar.gz"
-                : "linux-gnu.zip";
+                ? RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                    ? "aarch64-macos-feroxbuster.zip"
+                    : "x86_64-macos-feroxbuster.zip"
+                : RuntimeInformation.ProcessArchitecture == Architecture.Arm64
+                    ? "aarch64-linux-feroxbuster.zip"
+                    : "x86_64-linux-feroxbuster.zip";
 
         using var doc = JsonDocument.Parse(json);
         foreach (var asset in doc.RootElement.GetProperty("assets").EnumerateArray())

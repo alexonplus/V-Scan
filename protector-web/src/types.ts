@@ -13,6 +13,7 @@ export interface Vulnerability {
   cweId?: string
   owaspCategory?: string
   remediation: string
+  foundBy?: string
 }
 
 export interface AiReport {

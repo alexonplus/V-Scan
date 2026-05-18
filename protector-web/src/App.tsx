@@ -484,9 +484,14 @@ function VulnerabilityCard({ vuln, isExpanded, onToggle, aiInsight }: VulnCardPr
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-4 mt-1">
+            <div className="flex items-center gap-4 mt-1 flex-wrap">
               <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">{vuln.category}</span>
               {vuln.cweId && <span className="text-[11px] font-mono text-neon-secondary/40">{vuln.cweId}</span>}
+              {vuln.foundBy && (
+                <span className="text-[9px] font-mono text-white/20 bg-white/5 px-2 py-0.5 rounded-md">
+                  🔍 {vuln.foundBy}
+                </span>
+              )}
             </div>
           </div>
         </div>
