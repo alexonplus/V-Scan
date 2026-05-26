@@ -5,6 +5,7 @@ using Protector.API.Models;
 using Protector.Application.DTOs;
 using Protector.Application.UseCases;
 using Protector.Domain.Entities;
+using Protector.Domain.Interfaces;
 using ScanMode = Protector.Application.DTOs.ScanMode;
 
 namespace Protector.API.Controllers;
@@ -90,6 +91,39 @@ public sealed class ScanController : ControllerBase
 
             _results[scanId] = result;
             _status[scanId] = "completed";
+
+            // Persist scan to database
+            var repo = scope.ServiceProvider.GetRequiredService<IScanSessionRepository>();
+            await repo.AddAsync(new ScanHistoryItem(
+                result.Id,
+                result.Target.BaseUrl.ToString(),
+                request.Mode,
+                result.StartedAt,
+                result.CompletedAt,
+                result.Summary.Total,
+                result.Summary.Critical,
+                result.Summary.High,
+                result.Summary.Medium,
+                result.Summary.Low,
+                result.Summary.Info,
+                result.Summary.RiskScore,
+                result.Vulnerabilities.Select(v => new ScanHistoryFinding(
+                    Guid.NewGuid(),
+                    v.Title,
+                    v.Description,
+                    v.Severity.ToString(),
+                    v.Category.ToString(),
+                    v.Remediation,
+                    v.Url,
+                    v.Evidence,
+                    v.CweId,
+                    v.OwaspCategory,
+                    v.FoundBy,
+                    v.LineNumber,
+                    v.FilePath,
+                    v.DiscoveredAt
+                )).ToList()
+            ));
 
             // Notify React that scan is done — send full results
             await _hubContext.Clients.Group(scanId)
