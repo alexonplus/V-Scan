@@ -1,0 +1,79 @@
+using System;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Protector.Infrastructure.Persistence;
+
+#nullable disable
+
+namespace Protector.Infrastructure.Persistence.Migrations
+{
+    [DbContext(typeof(AppDbContext))]
+    partial class AppDbContextModelSnapshot : ModelSnapshot
+    {
+        protected override void BuildModel(ModelBuilder modelBuilder)
+        {
+#pragma warning disable 612, 618
+            modelBuilder
+                .HasAnnotation("ProductVersion", "8.0.11")
+                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+
+            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("Protector.Infrastructure.Persistence.Entities.ScanSessionEntity", b =>
+            {
+                b.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uniqueidentifier");
+                b.Property<DateTime?>("CompletedAt").HasColumnType("datetime2");
+                b.Property<int>("Critical").HasColumnType("int");
+                b.Property<int>("High").HasColumnType("int");
+                b.Property<int>("Info").HasColumnType("int");
+                b.Property<int>("Low").HasColumnType("int");
+                b.Property<string>("Mode").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                b.Property<int>("Medium").HasColumnType("int");
+                b.Property<int>("RiskScore").HasColumnType("int");
+                b.Property<DateTime>("StartedAt").HasColumnType("datetime2");
+                b.Property<string>("TargetUrl").IsRequired().HasMaxLength(2048).HasColumnType("nvarchar(2048)");
+                b.Property<int>("TotalVulnerabilities").HasColumnType("int");
+                b.HasKey("Id");
+                b.ToTable("ScanSessions");
+            });
+
+            modelBuilder.Entity("Protector.Infrastructure.Persistence.Entities.VulnerabilityRecordEntity", b =>
+            {
+                b.Property<Guid>("Id").ValueGeneratedNever().HasColumnType("uniqueidentifier");
+                b.Property<string>("Category").IsRequired().HasMaxLength(50).HasColumnType("nvarchar(50)");
+                b.Property<string>("CweId").HasColumnType("nvarchar(max)");
+                b.Property<DateTime>("DiscoveredAt").HasColumnType("datetime2");
+                b.Property<string>("Description").IsRequired().HasColumnType("nvarchar(max)");
+                b.Property<string>("Evidence").HasColumnType("nvarchar(max)");
+                b.Property<string>("FilePath").HasColumnType("nvarchar(max)");
+                b.Property<string>("FoundBy").HasColumnType("nvarchar(max)");
+                b.Property<int?>("LineNumber").HasColumnType("int");
+                b.Property<string>("OwaspCategory").HasColumnType("nvarchar(max)");
+                b.Property<string>("Remediation").IsRequired().HasColumnType("nvarchar(max)");
+                b.Property<Guid>("ScanSessionId").HasColumnType("uniqueidentifier");
+                b.Property<string>("Severity").IsRequired().HasMaxLength(20).HasColumnType("nvarchar(20)");
+                b.Property<string>("Title").IsRequired().HasMaxLength(256).HasColumnType("nvarchar(256)");
+                b.Property<string>("Url").HasColumnType("nvarchar(max)");
+                b.HasKey("Id");
+                b.HasIndex("ScanSessionId");
+                b.ToTable("VulnerabilityRecords");
+            });
+
+            modelBuilder.Entity("Protector.Infrastructure.Persistence.Entities.VulnerabilityRecordEntity", b =>
+            {
+                b.HasOne("Protector.Infrastructure.Persistence.Entities.ScanSessionEntity", "ScanSession")
+                    .WithMany("Vulnerabilities")
+                    .HasForeignKey("ScanSessionId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+                b.Navigation("ScanSession");
+            });
+
+            modelBuilder.Entity("Protector.Infrastructure.Persistence.Entities.ScanSessionEntity", b =>
+            {
+                b.Navigation("Vulnerabilities");
+            });
+#pragma warning restore 612, 618
+        }
+    }
+}

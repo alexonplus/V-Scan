@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Protector.API.Hubs;
 using Protector.Infrastructure;
+using Protector.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,8 +11,9 @@ builder.Services.AddControllers();
 // SignalR — real-time communication with React
 builder.Services.AddSignalR();
 
-// All our scan services (analyzers, crawler, use case)
-builder.Services.AddProtector();
+// All our scan services (analyzers, crawler, use case, database)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddProtector(connectionString);
 
 // CORS — allow any localhost port (Vite may pick a different port if 5173 is busy)
 builder.Services.AddCors(options =>
@@ -24,6 +27,13 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Auto-apply migrations on startup (SQL Server only, skip InMemory)
+if (!string.IsNullOrEmpty(connectionString))
+{
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
 
 app.UseCors("ReactApp");
 app.UseAuthorization();
