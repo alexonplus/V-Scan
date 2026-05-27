@@ -29,13 +29,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: protector-web/package-lock.json
 
       - name: Install dependencies
         working-directory: protector-web
-        run: npm ci
+        run: npm install
 
       - name: Build
         working-directory: protector-web
