@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Protector.Application.UseCases;
 using Protector.Domain.Interfaces;
@@ -9,6 +10,8 @@ using Protector.Infrastructure.Analyzers.Nuclei;
 using Protector.Infrastructure.Analyzers.Static;
 using Protector.Infrastructure.Crawler;
 using Protector.Infrastructure.Enrichers;
+using Protector.Infrastructure.Persistence;
+using Protector.Infrastructure.Persistence.Repositories;
 
 namespace Protector.Infrastructure;
 
@@ -18,8 +21,16 @@ public static class ServiceCollectionExtensions
     /// Registers all Protector services into the DI container.
     /// Call this once from CLI's Program.cs.
     /// </summary>
-    public static IServiceCollection AddProtector(this IServiceCollection services)
+    public static IServiceCollection AddProtector(this IServiceCollection services, string? connectionString = null)
     {
+        // EF Core — scan history database (SQL Server if connection string provided, otherwise in-memory for CLI/tests)
+        if (!string.IsNullOrEmpty(connectionString))
+            services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connectionString));
+        else
+            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("VScanDev"));
+
+        services.AddScoped<IScanSessionRepository, ScanSessionRepository>();
+
         // Scanner client — for HTTP vulnerability checks, 15s timeout
         services.AddHttpClient("scanner", client =>
         {

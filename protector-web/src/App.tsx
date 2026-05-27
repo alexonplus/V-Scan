@@ -3,10 +3,11 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Shield, Terminal, Search, AlertTriangle, Info as InfoIcon,
   ChevronDown, RefreshCcw, Zap, Lock, Globe,
-  Activity, Cpu, Radar
+  Activity, Cpu, Radar, Clock
 } from 'lucide-react'
 import { useScan } from './services/scanService'
 import type { Vulnerability, Severity, AiReport } from './types'
+import { HistoryPage } from './pages/HistoryPage'
 
 const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: string; glow: string; icon: React.ElementType }> = {
   Critical: { color: 'text-neon-accent',    bg: 'bg-neon-accent/10',    border: 'border-neon-accent/40',    glow: 'shadow-[0_0_15px_rgba(255,0,200,0.3)]',  icon: AlertTriangle },
@@ -17,6 +18,7 @@ const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: str
 }
 
 export default function App() {
+  const [page, setPage] = useState<'scanner' | 'history'>('scanner')
   const [url, setUrl] = useState('')
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -33,6 +35,34 @@ export default function App() {
     e.preventDefault()
     setActiveFilter(null)
     if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined, scanMode)
+  }
+
+  if (page === 'history') {
+    return (
+      <div className="relative min-h-screen font-sans">
+        <div className="max-w-5xl mx-auto px-6 py-12 md:px-12 relative z-10">
+          <header className="mb-10 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative p-3 glass-card rounded-2xl border border-neon-primary/30">
+                <Shield className="w-8 h-8 text-neon-primary neon-text-primary" />
+              </div>
+              <h1 className="text-4xl font-black tracking-tight text-white uppercase italic">
+                V-SCAN<span className="text-neon-primary">_</span>
+              </h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPage('scanner')} className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 transition-colors">
+                <Shield className="w-3.5 h-3.5" /> Scanner
+              </button>
+              <button className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/30 text-indigo-400">
+                <Clock className="w-3.5 h-3.5" /> History
+              </button>
+            </div>
+          </header>
+          <HistoryPage />
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -57,6 +87,28 @@ export default function App() {
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage('scanner')}
+                className={`flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border transition-colors ${
+                  page === 'scanner'
+                    ? 'bg-neon-primary/10 border-neon-primary/30 text-neon-primary'
+                    : 'border-white/10 text-white/40 hover:text-white/70'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" /> Scanner
+              </button>
+              <button
+                onClick={() => setPage('history')}
+                className={`flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border transition-colors ${
+                  page === 'history'
+                    ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400'
+                    : 'border-white/10 text-white/40 hover:text-white/70'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" /> History
+              </button>
+            </div>
             <div className="flex items-center gap-2 text-xs font-mono text-neon-secondary neon-text-secondary uppercase tracking-widest bg-neon-secondary/5 border border-neon-secondary/20 px-4 py-2 rounded-lg">
               <span className="w-2 h-2 rounded-full bg-neon-secondary animate-pulse shadow-[0_0_8px_var(--color-neon-secondary)]" />
               System Ready
