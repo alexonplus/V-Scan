@@ -18,7 +18,7 @@ const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: str
 }
 
 export default function App() {
-  const [page, setPage] = useState<'scanner' | 'history'>('scanner')
+  const [page, setPage] = useState<string>('scanner')
   const [url, setUrl] = useState('')
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
