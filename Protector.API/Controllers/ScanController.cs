@@ -92,9 +92,9 @@ public sealed class ScanController : ControllerBase
             _results[scanId] = result;
             _status[scanId] = "completed";
 
-            // Persist scan to database
-            var repo = scope.ServiceProvider.GetRequiredService<IScanSessionRepository>();
-            await repo.AddAsync(new ScanHistoryItem(
+            // Persist scan to database via service layer
+            var historyService = scope.ServiceProvider.GetRequiredService<IScanHistoryService>();
+            await historyService.SaveAsync(new ScanHistoryItem(
                 result.Id,
                 result.Target.BaseUrl.ToString(),
                 request.Mode,

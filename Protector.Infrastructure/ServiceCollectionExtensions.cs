@@ -12,6 +12,7 @@ using Protector.Infrastructure.Crawler;
 using Protector.Infrastructure.Enrichers;
 using Protector.Infrastructure.Persistence;
 using Protector.Infrastructure.Persistence.Repositories;
+using Protector.Infrastructure.Services;
 
 namespace Protector.Infrastructure;
 
@@ -30,6 +31,7 @@ public static class ServiceCollectionExtensions
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("VScanDev"));
 
         services.AddScoped<IScanSessionRepository, ScanSessionRepository>();
+        services.AddScoped<IScanHistoryService, ScanHistoryService>();
 
         // Scanner client — for HTTP vulnerability checks, 15s timeout
         services.AddHttpClient("scanner", client =>
