@@ -1,10 +1,11 @@
 using FluentAssertions;
 using NSubstitute;
 using Protector.Domain.Interfaces;
+using Protector.Infrastructure.Services;
 
 namespace Protector.Tests.History;
 
-public class ScanSessionRepositoryTests
+public class ScanHistoryServiceTests
 {
     // Helper — creates a sample scan session for tests
     private static ScanHistoryItem CreateSession(Guid? id = null, int riskScore = 10) => new(
@@ -30,9 +31,10 @@ public class ScanSessionRepositoryTests
         var repository = Substitute.For<IScanSessionRepository>();
         var sessions = new List<ScanHistoryItem> { CreateSession(), CreateSession() };
         repository.GetRecentAsync(20).Returns(sessions);
+        var service = new ScanHistoryService(repository);
 
         // Act
-        var result = await repository.GetRecentAsync(20);
+        var result = await service.GetRecentAsync(20);
 
         // Assert
         result.Should().HaveCount(2);
@@ -44,9 +46,10 @@ public class ScanSessionRepositoryTests
         // Arrange
         var repository = Substitute.For<IScanSessionRepository>();
         repository.GetRecentAsync(20).Returns(new List<ScanHistoryItem>());
+        var service = new ScanHistoryService(repository);
 
         // Act
-        var result = await repository.GetRecentAsync(20);
+        var result = await service.GetRecentAsync(20);
 
         // Assert
         result.Should().BeEmpty();
@@ -60,9 +63,10 @@ public class ScanSessionRepositoryTests
         var id = Guid.NewGuid();
         var session = CreateSession(id);
         repository.GetByIdAsync(id).Returns(session);
+        var service = new ScanHistoryService(repository);
 
         // Act
-        var result = await repository.GetByIdAsync(id);
+        var result = await service.GetByIdAsync(id);
 
         // Assert
         result.Should().NotBeNull();
@@ -76,25 +80,27 @@ public class ScanSessionRepositoryTests
         // Arrange
         var repository = Substitute.For<IScanSessionRepository>();
         repository.GetByIdAsync(Arg.Any<Guid>()).Returns((ScanHistoryItem?)null);
+        var service = new ScanHistoryService(repository);
 
         // Act
-        var result = await repository.GetByIdAsync(Guid.NewGuid());
+        var result = await service.GetByIdAsync(Guid.NewGuid());
 
         // Assert
         result.Should().BeNull();
     }
 
     [Fact]
-    public async Task AddAsync_CallsRepository_WithCorrectSession()
+    public async Task SaveAsync_CallsRepository_WithCorrectSession()
     {
         // Arrange
         var repository = Substitute.For<IScanSessionRepository>();
+        var service = new ScanHistoryService(repository);
         var session = CreateSession();
 
         // Act
-        await repository.AddAsync(session);
+        await service.SaveAsync(session);
 
-        // Assert — verify AddAsync was called exactly once with our session
+        // Assert — verify repository.AddAsync was called exactly once
         await repository.Received(1).AddAsync(session);
     }
 
@@ -103,12 +109,13 @@ public class ScanSessionRepositoryTests
     {
         // Arrange
         var repository = Substitute.For<IScanSessionRepository>();
+        var service = new ScanHistoryService(repository);
         var id = Guid.NewGuid();
 
         // Act
-        await repository.DeleteAsync(id);
+        await service.DeleteAsync(id);
 
-        // Assert — verify DeleteAsync was called with the correct id
+        // Assert — verify repository.DeleteAsync was called with the correct id
         await repository.Received(1).DeleteAsync(id);
     }
 
@@ -120,9 +127,10 @@ public class ScanSessionRepositoryTests
         var id = Guid.NewGuid();
         var highRiskSession = CreateSession(id, riskScore: 55);
         repository.GetByIdAsync(id).Returns(highRiskSession);
+        var service = new ScanHistoryService(repository);
 
         // Act
-        var result = await repository.GetByIdAsync(id);
+        var result = await service.GetByIdAsync(id);
 
         // Assert
         result!.RiskScore.Should().Be(55);

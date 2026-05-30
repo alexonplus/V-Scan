@@ -5,13 +5,13 @@ namespace Protector.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class HistoryController(IScanSessionRepository repository) : ControllerBase
+public sealed class HistoryController(IScanHistoryService historyService) : ControllerBase
 {
-    // GET /api/history — last 20 scans, summary only (no vulnerability list)
+    // GET /api/history — last 20 scans, summary only
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var sessions = await repository.GetRecentAsync(20);
+        var sessions = await historyService.GetRecentAsync(20);
         var result = sessions.Select(s => new
         {
             s.Id,
@@ -34,7 +34,7 @@ public sealed class HistoryController(IScanSessionRepository repository) : Contr
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var session = await repository.GetByIdAsync(id);
+        var session = await historyService.GetByIdAsync(id);
         if (session is null)
             return NotFound(new { error = "Scan not found" });
         return Ok(session);
@@ -44,10 +44,10 @@ public sealed class HistoryController(IScanSessionRepository repository) : Contr
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var session = await repository.GetByIdAsync(id);
+        var session = await historyService.GetByIdAsync(id);
         if (session is null)
             return NotFound(new { error = "Scan not found" });
-        await repository.DeleteAsync(id);
+        await historyService.DeleteAsync(id);
         return NoContent();
     }
 }
