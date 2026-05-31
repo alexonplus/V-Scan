@@ -1,0 +1,119 @@
+name: V-Scan Security Analysis
+description: Analyze changed files in a pull request for security vulnerabilities
+author: alexonplus
+
+inputs:
+  github-token:
+    description: GitHub token for posting comments
+    required: true
+    default: ${{ github.token }}
+  fail-on-severity:
+    description: Fail the check if findings at this severity or higher are found (High, Critical)
+    required: false
+    default: High
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+
+    - name: Get changed files
+      id: changed
+      shell: bash
+      run: |
+        BASE=${{ github.event.pull_request.base.sha }}
+        HEAD=${{ github.event.pull_request.head.sha }}
+        FILES=$(git diff --name-only $BASE $HEAD | tr '\n' ',')
+        echo "files=$FILES" >> $GITHUB_OUTPUT
+
+    - name: Run V-Scan static analysis
+      id: vscan
+      shell: bash
+      run: |
+        dotnet run --project ${{ github.action_path }}/Protector.CLI -- \
+          --source . \
+          --changed-files "${{ steps.changed.outputs.files }}" \
+          --output json \
+          --output-file vscan-results.json
+
+    - name: Post PR comment
+      uses: actions/github-script@v7
+      if: always()
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          if (!fs.existsSync('vscan-results.json')) return;
+
+          const results = JSON.parse(fs.readFileSync('vscan-results.json', 'utf8'));
+          const vulns = results.vulnerabilities || [];
+
+          if (vulns.length === 0) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '## 🛡️ V-Scan Security Analysis\n\n✅ **No security issues found** in changed files.'
+            });
+            return;
+          }
+
+          const critical = vulns.filter(v => v.severity === 'Critical');
+          const high = vulns.filter(v => v.severity === 'High');
+          const medium = vulns.filter(v => v.severity === 'Medium');
+
+          let body = '## 🔍 V-Scan Security Analysis\n\n';
+
+          if (critical.length > 0 || high.length > 0) {
+            body += `❌ **${critical.length + high.length} issue(s) require attention**\n\n`;
+          } else {
+            body += `⚠️ **${vulns.length} issue(s) found**\n\n`;
+          }
+
+          for (const v of vulns.slice(0, 10)) {
+            const icon = v.severity === 'Critical' ? '🔴' : v.severity === 'High' ? '🟠' : '🟡';
+            body += `${icon} **${v.severity}** — ${v.title}\n`;
+            if (v.filePath) body += `  📄 \`${v.filePath}\``;
+            if (v.lineNumber) body += ` line ${v.lineNumber}`;
+            body += '\n';
+            body += `  ${v.description}\n`;
+            body += `  💡 ${v.remediation}\n\n`;
+          }
+
+          if (vulns.length > 10) {
+            body += `_...and ${vulns.length - 10} more findings_\n`;
+          }
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body
+          });
+
+    - name: Fail if critical/high issues found
+      shell: bash
+      if: always()
+      run: |
+        if [ ! -f vscan-results.json ]; then exit 0; fi
+        SEVERITY="${{ inputs.fail-on-severity }}"
+        COUNT=$(cat vscan-results.json | python3 -c "
+        import sys, json
+        data = json.load(sys.stdin)
+        vulns = data.get('vulnerabilities', [])
+        severities = ['Critical', 'High'] if '$SEVERITY' == 'High' else ['Critical']
+        print(len([v for v in vulns if v['severity'] in severities]))
+        ")
+        if [ "$COUNT" -gt "0" ]; then
+          echo "❌ Found $COUNT $SEVERITY+ severity issues"
+          exit 1
+        fi
+        echo "✅ No $SEVERITY+ severity issues found"
