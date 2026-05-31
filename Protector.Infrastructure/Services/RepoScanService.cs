@@ -27,11 +27,24 @@ public sealed class RepoScanService(IHttpClientFactory httpClientFactory) : IRep
             ["*.env", "*.json", "*.yaml", "*.yml", "*.py", "*.js", "*.ts", "*.cs"],
             ["AKIA", "ghp_", "sk-", "xox", "eyJhbGciOiJIUzI1NiJ9"]),
 
+        new("MCP_SERVER",            "Malicious MCP server config",
+            "Repository contains .cursor/mcp.json — auto-connects Cursor to attacker's MCP server on open",
+            RepoFindingSeverity.Danger,
+            [".cursor/mcp.json", "mcp.json", ".cursorrules", ".cursor/rules"],
+            ["url", "command", "server", "http", "ws://", "wss://"]),
+
         new("CURSOR_RULES",         "Suspicious Cursor/IDE config",
             ".cursor/rules or IDE config that may exfiltrate data or run commands",
             RepoFindingSeverity.Danger,
             [".cursor/rules", ".cursorrules", ".vscode/settings.json", ".idea/workspace.xml"],
             ["curl", "wget", "ssh", "exec(", "eval(", "os.system", "subprocess"]),
+
+        new("PYTHON_EXFIL",         "Python data exfiltration pattern",
+            "Python script reads sensitive files and sends them over the network",
+            RepoFindingSeverity.Danger,
+            ["*.py", "setup.py", "install.py", "run.py", "start.py", "main.py"],
+            ["requests.post", "requests.get", "urllib.request", "socket.connect",
+             "open(os.path.expanduser", "glob.glob", "shutil.copy", "base64.b64encode"]),
 
         new("REVERSE_SHELL",        "Possible reverse shell",
             "Code pattern associated with reverse shell connections",
@@ -50,6 +63,57 @@ public sealed class RepoScanService(IHttpClientFactory httpClientFactory) : IRep
             RepoFindingSeverity.Danger,
             ["*.js", "*.ts", "*.py", "*.sh"],
             ["process.env", "os.environ", "dotenv", "$env:"]),
+
+        // VS Code — auto-run tasks on folder open
+        new("VSCODE_TASKS",         "VS Code auto-run task",
+            ".vscode/tasks.json with runOn:folderOpen runs commands automatically when you open the project",
+            RepoFindingSeverity.Danger,
+            [".vscode/tasks.json"],
+            ["folderOpen", "runOn"]),
+
+        new("VSCODE_SETTINGS",      "Suspicious VS Code settings",
+            ".vscode/settings.json may auto-run terminal commands or configure malicious extensions",
+            RepoFindingSeverity.Warning,
+            [".vscode/settings.json"],
+            ["terminal.integrated.env", "python.terminal.activateEnvironment",
+             "code-runner.executorMap", "tasks.runOnSave"]),
+
+        // PyCharm / IntelliJ — run configs and startup scripts
+        new("IDEA_RUNCONFIG",       "Suspicious IntelliJ run configuration",
+            ".idea/ run config may execute arbitrary scripts when you open or build the project",
+            RepoFindingSeverity.Warning,
+            [".idea/workspace.xml", ".idea/runConfigurations"],
+            ["<option name=\"SCRIPT_NAME\"", "beforeRunTasks", "ExternalSystemTask"]),
+
+        // pip — setup.py with custom install commands
+        new("PIP_SETUP_CMD",        "Malicious pip setup command",
+            "setup.py with custom cmdclass runs arbitrary code on pip install",
+            RepoFindingSeverity.Danger,
+            ["setup.py"],
+            ["cmdclass", "install_requires", "subprocess", "os.system", "exec("]),
+
+        // npm — lifecycle scripts beyond postinstall
+        new("NPM_LIFECYCLE",        "Suspicious npm lifecycle script",
+            "npm scripts like preinstall/prepare/prepack run automatically during install or publish",
+            RepoFindingSeverity.Danger,
+            ["package.json"],
+            ["\"preinstall\"", "\"prepare\"", "\"prepack\"", "\"postpack\""]),
+
+        // Git hooks baked into the repo
+        new("GIT_HOOKS",            "Git hooks in repository",
+            "Hooks in .githooks/ or scripts/hooks/ run automatically on git operations",
+            RepoFindingSeverity.Warning,
+            [".githooks/post-checkout", ".githooks/pre-commit", ".githooks/post-merge",
+             "scripts/hooks/post-checkout", "hooks/post-checkout"],
+            ["curl", "wget", "python", "bash", "sh ", "exec", "nc "]),
+
+        // Obfuscated code — base64 encoded payloads
+        new("OBFUSCATED_CODE",      "Obfuscated/encoded payload",
+            "Base64 or hex encoded strings that hide malicious code from reviewers",
+            RepoFindingSeverity.Danger,
+            ["*.py", "*.js", "*.ts", "*.sh", "*.ps1"],
+            ["exec(base64", "eval(base64", "base64.b64decode", "__import__('base64')",
+             "fromCharCode", "\\x65\\x76\\x61\\x6c"]),
     ];
 
     public async Task<RepoScanResult> ScanAsync(string repoUrl)
@@ -59,6 +123,19 @@ public sealed class RepoScanService(IHttpClientFactory httpClientFactory) : IRep
 
         // Get repo tree (all files recursively)
         var tree = await GetRepoTree(client, owner, repo);
+
+        // Always check these high-risk files even if not in tree
+        var alwaysCheck = new[]
+        {
+            ".cursor/mcp.json", ".cursorrules", ".cursor/rules",
+            ".vscode/settings.json", ".vscode/tasks.json",
+            ".idea/workspace.xml", ".githooks/post-checkout",
+            ".githooks/pre-commit", ".githooks/post-merge",
+            "setup.py", "install.py", "package.json"
+        };
+        foreach (var f in alwaysCheck)
+            if (!tree.Contains(f)) tree.Add(f);
+
         var findings = new List<RepoFinding>();
 
         foreach (var file in tree)
