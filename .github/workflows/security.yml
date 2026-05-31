@@ -1,0 +1,93 @@
+name: Security Analysis
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  vscan:
+    name: V-Scan Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Get changed files
+        id: changed
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          FILES=$(git diff --name-only $BASE $HEAD | grep -E '\.(cs|ts|tsx|js|py)$' | tr '\n' ',')
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+          echo "Changed files: $FILES"
+
+      - name: Run V-Scan static analysis
+        if: steps.changed.outputs.files != ''
+        id: vscan
+        run: |
+          dotnet run --project Protector.CLI -- \
+            --source . \
+            --changed-files "${{ steps.changed.outputs.files }}" \
+            --output-file vscan-results.json
+        continue-on-error: true
+
+      - name: Post PR comment
+        if: steps.changed.outputs.files != ''
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            if (!fs.existsSync('vscan-results.json')) {
+              console.log('No results file found');
+              return;
+            }
+
+            const results = JSON.parse(fs.readFileSync('vscan-results.json', 'utf8'));
+            const vulns = results.vulnerabilities || [];
+
+            if (vulns.length === 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: '## 🛡️ V-Scan Security Analysis\n\n✅ **No security issues found** in changed files.'
+              });
+              return;
+            }
+
+            let body = `## 🔍 V-Scan Security Analysis\n\n`;
+            const critical = vulns.filter(v => v.severity === 'Critical').length;
+            const high = vulns.filter(v => v.severity === 'High').length;
+
+            if (critical + high > 0) {
+              body += `❌ **${critical + high} high-severity issue(s) found**\n\n`;
+            } else {
+              body += `⚠️ **${vulns.length} issue(s) found**\n\n`;
+            }
+
+            for (const v of vulns.slice(0, 10)) {
+              const icon = v.severity === 'Critical' ? '🔴' : v.severity === 'High' ? '🟠' : '🟡';
+              body += `${icon} **${v.severity}** — ${v.title}\n`;
+              if (v.filePath) body += `  📄 \`${v.filePath}\``;
+              if (v.lineNumber) body += ` line ${v.lineNumber}`;
+              body += `\n  > ${v.description}\n\n`;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
