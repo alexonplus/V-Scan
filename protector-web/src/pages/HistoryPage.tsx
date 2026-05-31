@@ -16,7 +16,7 @@ interface HistorySession {
   riskScore: number
 }
 
-const API = 'http://localhost:5285'
+const API = 'http://localhost:5153'
 
 const severityColor = (count: number, type: 'critical' | 'high' | 'medium' | 'low') => {
   if (count === 0) return 'text-gray-500'

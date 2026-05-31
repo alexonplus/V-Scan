@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from 'motion/react'
 import {
   Shield, Terminal, Search, AlertTriangle, Info as InfoIcon,
   ChevronDown, RefreshCcw, Zap, Lock, Globe,
-  Activity, Cpu, Radar, Clock
+  Activity, Cpu, Radar, Clock, GitBranch
 } from 'lucide-react'
 import { useScan } from './services/scanService'
 import type { Vulnerability, Severity, AiReport } from './types'
 import { HistoryPage } from './pages/HistoryPage'
+import { RepoScanPage } from './pages/RepoScanPage'
 
 const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: string; glow: string; icon: React.ElementType }> = {
   Critical: { color: 'text-neon-accent',    bg: 'bg-neon-accent/10',    border: 'border-neon-accent/40',    glow: 'shadow-[0_0_15px_rgba(255,0,200,0.3)]',  icon: AlertTriangle },
@@ -18,7 +19,7 @@ const SEVERITY_CONFIG: Record<Severity, { color: string; bg: string; border: str
 }
 
 export default function App() {
-  const [page, setPage] = useState<string>('scanner')
+  const [page, setPage] = useState<string>('scanner') // 'scanner' | 'history' | 'repo'
   const [url, setUrl] = useState('')
   const [sourcePath, setSourcePath] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export default function App() {
     if (url.trim()) startScan(url.trim(), sourcePath.trim() || undefined, scanMode)
   }
 
-  if (page === 'history') {
+  if (page === 'history' || page === 'repo') {
     return (
       <div className="relative min-h-screen font-sans">
         <div className="max-w-5xl mx-auto px-6 py-12 md:px-12 relative z-10">
@@ -54,12 +55,15 @@ export default function App() {
               <button onClick={() => setPage('scanner')} className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 transition-colors">
                 <Shield className="w-3.5 h-3.5" /> Scanner
               </button>
-              <button className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/30 text-indigo-400">
+              <button onClick={() => setPage('history')} className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border bg-indigo-500/10 border-indigo-500/30 text-indigo-400">
                 <Clock className="w-3.5 h-3.5" /> History
+              </button>
+              <button onClick={() => setPage('repo')} className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border bg-purple-500/10 border-purple-500/30 text-purple-400">
+                <GitBranch className="w-3.5 h-3.5" /> Repo
               </button>
             </div>
           </header>
-          <HistoryPage />
+          {page === 'repo' ? <RepoScanPage /> : <HistoryPage />}
         </div>
       </div>
     )
@@ -107,6 +111,16 @@ export default function App() {
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" /> History
+              </button>
+              <button
+                onClick={() => setPage('repo')}
+                className={`flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-lg border transition-colors ${
+                  page === 'repo'
+                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-400'
+                    : 'border-white/10 text-white/40 hover:text-white/70'
+                }`}
+              >
+                <GitBranch className="w-3.5 h-3.5" /> Repo
               </button>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono text-neon-secondary neon-text-secondary uppercase tracking-widest bg-neon-secondary/5 border border-neon-secondary/20 px-4 py-2 rounded-lg">

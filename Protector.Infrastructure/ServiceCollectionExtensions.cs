@@ -32,6 +32,15 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IScanSessionRepository, ScanSessionRepository>();
         services.AddScoped<IScanHistoryService, ScanHistoryService>();
+        services.AddScoped<IRepoScanService, RepoScanService>();
+
+        // GitHub API client — for repo scanner, no auth = 60 req/hour
+        services.AddHttpClient("github", client =>
+        {
+            client.BaseAddress = new Uri("https://api.github.com/");
+            client.DefaultRequestHeaders.Add("User-Agent", "V-Scan/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+        });
 
         // Scanner client — for HTTP vulnerability checks, 15s timeout
         services.AddHttpClient("scanner", client =>
