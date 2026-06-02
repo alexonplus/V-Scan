@@ -37,6 +37,24 @@ if (!string.IsNullOrEmpty(connectionString))
 
 app.UseCors("ReactApp");
 app.UseAuthorization();
+
+// Security headers — fixes findings from V-Scan self-scan
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["X-XSS-Protection"] = "1; mode=block";
+    headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self' ws://localhost:* wss://localhost:*";
+    // HSTS only in production — localhost doesn't support HTTPS by default
+    if (!context.Request.Host.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
+});
+
 app.MapControllers();
 
 // SignalR hub endpoint — React connects here for real-time progress
