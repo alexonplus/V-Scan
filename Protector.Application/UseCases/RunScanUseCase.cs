@@ -133,31 +133,7 @@ public sealed class RunScanUseCase
             StageProgress("static", 1, 1, "Static analysis complete.");
         }
 
-        // Stage 5: AI Enrichment
-        if (hasAi && result.Summary.Total > 0)
-        {
-            var aiTotal = result.Vulnerabilities.Count(v =>
-                v.Severity is Domain.Enums.Severity.Critical or Domain.Enums.Severity.High);
-
-            if (aiTotal > 0)
-            {
-                var insights = await _enricher!.EnrichAllAsync(
-                    result.Vulnerabilities,
-                    progress: msg => OnProgress?.Invoke(msg),
-                    ct);
-                result.SetAiInsights(insights);
-            }
-
-            // Generate overall AI scan report
-            StageProgress("ai", aiTotal, aiTotal, "Generating AI security report...");
-            var report = await _enricher!.GenerateReportAsync(
-                result.Vulnerabilities,
-                request.Url,
-                ct);
-            if (report is not null)
-                result.SetAiReport(report);
-        }
-
+        // Stage 5: AI Enrichment — skipped here, triggered manually via POST /api/scan/{id}/analyze
         result.Complete();
         StageProgress("done", 1, 1, $"Scan complete. Found {result.Summary.Total} vulnerabilities.");
 

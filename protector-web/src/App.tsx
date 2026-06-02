@@ -25,7 +25,7 @@ export default function App() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
   const [scanMode, setScanMode] = useState<'Quick' | 'Standard' | 'Deep'>('Standard')
-  const { status, progress, result, ollamaOnline, stages, startScan, reset } = useScan()
+  const { status, progress, result, ollamaOnline, stages, aiStatus, startScan, analyzeWithAi, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -383,7 +383,30 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AI Report — shown prominently when Ollama is available */}
+              {/* AI Analysis — manual trigger button */}
+              {!result.aiReport && (
+                <div className="glass-card rounded-2xl p-6 border border-neon-primary/20 flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-semibold flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-neon-primary" />
+                      AI Security Analysis
+                    </div>
+                    <p className="text-white/40 text-sm mt-1">
+                      {ollamaOnline
+                        ? 'Get AI-powered explanations and recommendations for each vulnerability'
+                        : 'Ollama is not running — start it to enable AI analysis'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={analyzeWithAi}
+                    disabled={!ollamaOnline || aiStatus === 'running'}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-neon-primary/10 border border-neon-primary/30 text-neon-primary rounded-xl font-semibold hover:bg-neon-primary/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Activity className="w-4 h-4" />
+                    {aiStatus === 'running' ? 'Analyzing...' : 'Analyze with AI'}
+                  </button>
+                </div>
+              )}
               {result.aiReport && <AiReportBlock report={result.aiReport} />}
 
               {/* Meta */}

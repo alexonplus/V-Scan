@@ -66,6 +66,54 @@ public sealed class ScanController : ControllerBase
         });
     }
 
+    // POST /api/scan/{scanId}/analyze — trigger AI enrichment on demand
+    [HttpPost("{scanId}/analyze")]
+    public IActionResult StartAiAnalysis(string scanId)
+    {
+        if (!_results.TryGetValue(scanId, out var resultEntry))
+            return NotFound(new { error = "Scan not found or not completed yet" });
+
+        var result = resultEntry.result;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var enricher = scope.ServiceProvider.GetService<Protector.Domain.Interfaces.IVulnerabilityEnricher>();
+                if (enricher is null)
+                {
+                    await _hubContext.Clients.Group(scanId).SendAsync("AiError", "Ollama is not running");
+                    return;
+                }
+
+                var aiTotal = result.Vulnerabilities.Count(v =>
+                    v.Severity is Domain.Enums.Severity.Critical or Domain.Enums.Severity.High);
+
+                if (aiTotal > 0)
+                {
+                    var insights = await enricher.EnrichAllAsync(
+                        result.Vulnerabilities,
+                        progress: msg => _hubContext.Clients.Group(scanId).SendAsync("Progress", msg),
+                        default);
+                    result.SetAiInsights(insights);
+                }
+
+                var report = await enricher.GenerateReportAsync(result.Vulnerabilities, result.Target.BaseUrl.ToString(), default);
+                if (report is not null)
+                    result.SetAiReport(report);
+
+                await _hubContext.Clients.Group(scanId).SendAsync("AiCompleted", MapToResponse(scanId, result));
+            }
+            catch (Exception ex)
+            {
+                await _hubContext.Clients.Group(scanId).SendAsync("AiError", ex.Message);
+            }
+        });
+
+        return Accepted(new { message = "AI analysis started" });
+    }
+
     // GET /api/scan/{scanId} — returns full results when scan is complete
     [HttpGet("{scanId}")]
     public IActionResult GetResult(string scanId)
