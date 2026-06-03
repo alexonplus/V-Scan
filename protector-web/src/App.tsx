@@ -175,11 +175,32 @@ export default function App() {
                   </div>
                   <div className="space-y-3">
                     <label className="flex items-center gap-2 text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Source Code Path <span className="text-white/20 normal-case tracking-normal font-normal">(optional)</span></label>
-                    <div className="relative group">
-                      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-secondary/0 via-neon-secondary to-neon-secondary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
-                      <Cpu className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-secondary transition-colors" />
-                      <input type="text" value={sourcePath} onChange={e => setSourcePath(e.target.value)} placeholder="C:\path\to\project"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                    <div className="relative group flex gap-2">
+                      <div className="relative flex-1">
+                        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-secondary/0 via-neon-secondary to-neon-secondary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+                        <Cpu className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-secondary transition-colors" />
+                        <input type="text" value={sourcePath} onChange={e => setSourcePath(e.target.value)} placeholder="C:\path\to\project"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                      </div>
+                      <label
+                        title="Browse folder"
+                        className="flex items-center justify-center px-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-white/40 hover:text-neon-secondary"
+                      >
+                        <Search className="w-5 h-5" />
+                        <input
+                          type="file"
+                          className="hidden"
+                          {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                          onChange={e => {
+                            const files = e.target.files
+                            if (files && files.length > 0) {
+                              const firstFile = files[0] as File & { webkitRelativePath: string }
+                              const folderName = firstFile.webkitRelativePath.split('/')[0]
+                              setSourcePath(folderName)
+                            }
+                          }}
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>
