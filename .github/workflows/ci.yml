@@ -31,6 +31,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      # 5. Run all tests in Protector.Tests — fails if any test fails
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release --verbosity normal
+      # 5. Run only Unit tests in CI — Integration and E2E run manually
+      - name: Run unit tests
+        run: dotnet test --no-build --configuration Release --verbosity normal --filter "Category!=Integration&Category!=E2E"

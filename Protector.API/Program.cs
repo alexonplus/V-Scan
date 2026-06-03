@@ -61,3 +61,6 @@ app.MapControllers();
 app.MapHub<ScanHub>("/hubs/scan");
 
 app.Run();
+
+// Needed for WebApplicationFactory in E2E tests
+public partial class Program { }
