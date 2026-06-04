@@ -4,11 +4,14 @@ using Protector.Infrastructure.Persistence.Entities;
 
 namespace Protector.Infrastructure.Persistence.Repositories;
 
-public sealed class ScanSessionRepository(AppDbContext db) : IScanSessionRepository
+// Inherits GetByIdAsync(Guid), GetAllAsync(), AddAsync(), DeleteAsync() from GenericRepository<T>
+// Override GetByIdAsync to Include Vulnerabilities (eager loading)
+public sealed class ScanSessionRepository(AppDbContext db)
+    : GenericRepository<ScanSessionEntity>(db), IScanSessionRepository
 {
-    public async Task<ScanHistoryItem?> GetByIdAsync(Guid id)
+    public new async Task<ScanHistoryItem?> GetByIdAsync(Guid id)
     {
-        var entity = await db.ScanSessions
+        var entity = await Db.ScanSessions
             .Include(s => s.Vulnerabilities)
             .FirstOrDefaultAsync(s => s.Id == id);
 
@@ -17,7 +20,7 @@ public sealed class ScanSessionRepository(AppDbContext db) : IScanSessionReposit
 
     public async Task<IReadOnlyList<ScanHistoryItem>> GetRecentAsync(int count = 20)
     {
-        var entities = await db.ScanSessions
+        var entities = await Db.ScanSessions
             .Include(s => s.Vulnerabilities)
             .OrderByDescending(s => s.StartedAt)
             .Take(count)
@@ -62,18 +65,16 @@ public sealed class ScanSessionRepository(AppDbContext db) : IScanSessionReposit
             }).ToList()
         };
 
-        await db.ScanSessions.AddAsync(entity);
-        await db.SaveChangesAsync();
+        await Db.ScanSessions.AddAsync(entity);
+        await Db.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task UpdateAsync(Guid id, string notes)
     {
-        var entity = await db.ScanSessions.FindAsync(id);
-        if (entity is not null)
-        {
-            db.ScanSessions.Remove(entity);
-            await db.SaveChangesAsync();
-        }
+        var entity = await Db.ScanSessions.FindAsync(id);
+        if (entity is null) return;
+        entity.Notes = notes;
+        await Db.SaveChangesAsync();
     }
 
     private static ScanHistoryItem MapToItem(ScanSessionEntity e) => new(

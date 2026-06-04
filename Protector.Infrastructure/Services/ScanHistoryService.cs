@@ -13,6 +13,9 @@ public sealed class ScanHistoryService(IScanSessionRepository repository) : ISca
     public Task SaveAsync(ScanHistoryItem session) =>
         repository.AddAsync(session);
 
+    public Task UpdateNotesAsync(Guid id, string notes) =>
+        repository.UpdateAsync(id, notes);
+
     public Task DeleteAsync(Guid id) =>
         repository.DeleteAsync(id);
 }

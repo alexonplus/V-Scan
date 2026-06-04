@@ -5,6 +5,7 @@ public interface IScanSessionRepository
     Task<ScanHistoryItem?> GetByIdAsync(Guid id);
     Task<IReadOnlyList<ScanHistoryItem>> GetRecentAsync(int count = 20);
     Task AddAsync(ScanHistoryItem session);
+    Task UpdateAsync(Guid id, string notes);
     Task DeleteAsync(Guid id);
 }
 
@@ -21,7 +22,8 @@ public sealed record ScanHistoryItem(
     int Low,
     int Info,
     int RiskScore,
-    IReadOnlyList<ScanHistoryFinding> Findings
+    IReadOnlyList<ScanHistoryFinding> Findings,
+    string? Notes = null
 );
 
 public sealed record ScanHistoryFinding(
