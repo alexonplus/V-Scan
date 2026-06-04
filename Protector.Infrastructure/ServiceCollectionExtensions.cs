@@ -30,6 +30,8 @@ public static class ServiceCollectionExtensions
         else
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("VScanDev"));
 
+        // Generic repository — open generic registration so IGenericRepository<T> resolves for any entity
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         services.AddScoped<IScanSessionRepository, ScanSessionRepository>();
         services.AddScoped<IScanHistoryService, ScanHistoryService>();
         services.AddScoped<IRepoScanService, RepoScanService>();
