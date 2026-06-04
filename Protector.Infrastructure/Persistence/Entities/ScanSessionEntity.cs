@@ -23,5 +23,8 @@ public sealed class ScanSessionEntity
     public int Info { get; set; }
     public int RiskScore { get; set; }
 
+    [MaxLength(500)]
+    public string? Notes { get; set; }
+
     public ICollection<VulnerabilityRecordEntity> Vulnerabilities { get; set; } = [];
 }

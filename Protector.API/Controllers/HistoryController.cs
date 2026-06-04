@@ -40,6 +40,18 @@ public sealed class HistoryController(IScanHistoryService historyService) : Cont
         return Ok(session);
     }
 
+    // PUT /api/history/{id} — update scan notes
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateScanNotesRequest request)
+    {
+        var session = await historyService.GetByIdAsync(id);
+        if (session is null)
+            return NotFound(new { error = "Scan not found" });
+
+        await historyService.UpdateNotesAsync(id, request.Notes ?? string.Empty);
+        return NoContent();
+    }
+
     // DELETE /api/history/{id} — remove scan from history
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
@@ -51,3 +63,5 @@ public sealed class HistoryController(IScanHistoryService historyService) : Cont
         return NoContent();
     }
 }
+
+public sealed record UpdateScanNotesRequest(string? Notes);

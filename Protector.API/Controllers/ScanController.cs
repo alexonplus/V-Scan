@@ -30,6 +30,10 @@ public sealed class ScanController : ControllerBase
             }
     }
 
+    // IServiceScopeFactory is injected here instead of IScanHistoryService directly
+    // because scans run inside Task.Run() — a background thread that outlives the HTTP request scope.
+    // Scoped services (like DbContext) cannot be captured from a singleton/transient context.
+    // We create a new DI scope per scan to safely resolve scoped services inside the background task.
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHubContext<ScanHub> _hubContext;
 
