@@ -1,12 +1,10 @@
 # V-Scan — Web Vulnerability Scanner
 
-V-Scan helps you find security vulnerabilities in websites. Point it at any URL and it
-will check for common security issues — missing headers, SQL injection, exposed files,
-weak configurations and more. It also uses a local AI model to explain what was found
-and what to fix first, in plain language.
+V-Scan is a full-stack security scanner that finds vulnerabilities in websites and repositories.
+Point it at any URL and it checks for security issues — missing headers, SQL injection, open redirects, exposed files, and more.
+It also uses a local AI model to explain findings and prioritize what to fix first, in plain language.
 
-<!-- Add a screenshot here -->
-<!-- ![V-Scan UI](docs/screenshots/main.png) -->
+**[Live Demo →](https://alexonplus.github.io/V-Scan/)**
 
 ![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -16,67 +14,87 @@ and what to fix first, in plain language.
 ![Go](https://img.shields.io/badge/Go-00ADD8?style=for-the-badge&logo=go&logoColor=white)
 
 ![CI](https://github.com/alexonplus/V-Scan/actions/workflows/ci.yml/badge.svg?branch=develop)
+![Tests](https://img.shields.io/badge/tests-46%20passing-brightgreen?style=flat-square)
 ![License](https://img.shields.io/badge/license-Polyform--NC-orange?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
 
 ---
 
-## Features
 <img width="1017" height="902" alt="1" src="https://github.com/user-attachments/assets/82580cca-be17-4a75-b84a-76d193da1479" />
 <img width="1062" height="882" alt="2" src="https://github.com/user-attachments/assets/5fcbb539-8e0c-4b06-89cc-e6ed3f8481c7" />
 <img width="1020" height="896" alt="3" src="https://github.com/user-attachments/assets/15747f35-138d-45f0-8cdb-439a3421a198" />
 
+---
 
+## Features
 
 ### Scan Modes
 | Mode | Time | What runs |
 |---|---|---|
-| ⚡ **Quick** | ~30s | Our 6 HTTP analyzers |
+| ⚡ **Quick** | ~30s | 7 HTTP analyzers |
 | 🔍 **Standard** | ~1-2 min | HTTP + httpx + feroxbuster |
 | 🔬 **Deep** | ~15 min | Everything + Nuclei (9000+ templates) |
 
-### Security Checks
-<!-- SCREENSHOT: Scan results page -->
-<!-- ![Scan Results](docs/screenshots/results.png) -->
+### HTTP Analyzers (black-box — live site)
+- 🛡️ **Security Headers** — CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- 💉 **SQL Injection** — payload testing on URL parameters
+- ⚡ **Cross-Site Scripting (XSS)** — reflected XSS detection
+- 🔀 **Open Redirect** — detects unvalidated redirects (CWE-601)
+- 🌐 **CORS Misconfiguration** — wildcard and null origin checks
+- 🔒 **CSRF** — POST forms without anti-forgery tokens
+- 🔐 **SSL/TLS** — certificate expiry, HTTPS enforcement
 
-**HTTP Analyzers (black-box — live site)**
-- 🛡️ Security Headers — CSP, HSTS, X-Frame-Options, X-Content-Type-Options
-- 💉 SQL Injection — payload testing on URL parameters
-- ⚡ Cross-Site Scripting (XSS) — reflected XSS detection
-- 🌐 CORS Misconfiguration — wildcard and null origin checks
-- 🔒 CSRF — POST forms without anti-forgery tokens
-- 🔐 SSL/TLS — certificate expiry, HTTPS enforcement
+### Repo Scanner — analyze before you clone
+Paste any GitHub repository URL and V-Scan analyzes it for malicious patterns **without cloning** — via GitHub API only.
 
-**External Tools (auto-downloaded)**
+Detects **15 attack vectors** including:
+- 🎯 MCP server auto-connect attacks (`.cursor/mcp.json`)
+- 📦 Malicious `postinstall`/`preinstall` npm scripts
+- 🖥️ VS Code tasks that auto-run on folder open
+- 🐍 Python data exfiltration patterns
+- 🪝 Git hooks (post-checkout, pre-commit)
+- 🔑 Hardcoded tokens (AWS, GitHub, OpenAI)
+- 🧬 Base64 obfuscated payloads
+
+### External Tools (auto-downloaded)
 - 🚀 **httpx** (Go) — fast tech fingerprinting: server version, frameworks, React/WordPress/etc.
 - 🦀 **feroxbuster** (Rust) — hidden path discovery: `/.env`, `/.git`, `/admin`, `/backup.zip`
 - ☢️ **Nuclei** (Go) — 9000+ CVE and misconfiguration templates *(Deep mode only)*
 - 🐍 **semgrep** (Python) — 5000+ static analysis rules for C#, JS, TypeScript, React
 
-**Static Code Analysis (white-box — source code)**
+### Static Code Analysis (white-box — source code)
 - C# via Roslyn AST — SQL injection, hardcoded secrets, BinaryFormatter, MD5/SHA1
 - React/TypeScript — `dangerouslySetInnerHTML`, `eval()`, localStorage tokens, HTTP calls
 - semgrep OWASP Top 10 + CWE-25 rule packs *(when source path provided)*
 
 ### AI Analysis (local & private)
-<!-- SCREENSHOT: AI Security Report block -->
-<!-- ![AI Report](docs/screenshots/ai-report.png) -->
-
 - 🤖 Powered by **Ollama** — runs entirely on your machine, no data sent to internet
-- **AI Security Report** — overall assessment + top 3 priorities to fix
+- **On-demand** — click "Analyze with AI" after scan, your CPU stays quiet until you ask
+- **AI Security Report** — overall risk assessment + top 3 priorities to fix
 - **Per-vulnerability explanations** — plain language analysis on each High/Critical finding
 - Model: **phi3:mini** (2.3GB, optimized for CPU)
 
-### Real-time Progress Pipeline
-<!-- SCREENSHOT: Scanning progress pipeline -->
-<!-- ![Pipeline](docs/screenshots/pipeline.png) -->
+### Scan History
+- Every scan saved to database automatically
+- Browse past scans, compare results, delete old entries
+- Built with **Entity Framework Core + SQL Server**
 
-Each scan stage shows live progress:
+### GitHub Action
+Use V-Scan as a reusable GitHub Action in any repository — analyzes changed files on every PR and posts findings as a comment:
+
+```yaml
+- uses: alexonplus/V-Scan@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    fail-on-severity: High
+```
+
+### Real-time Progress Pipeline
 ```
 🌐 Crawling          ████████████ 100% ✓
 🛡️ HTTP Analyzers    ████████████ 100% ✓
 📡 Nuclei Scanner    (Deep only)
-🤖 AI Enrichment     ████████░░░░  67%  1/2
+🤖 AI Enrichment     on demand
 ```
 
 ---
@@ -89,20 +107,29 @@ Clean Architecture with 4 layers:
 V-Scan/
 ├── Protector.Domain/         ← Entities, interfaces (zero dependencies)
 ├── Protector.Application/    ← Use cases, scan orchestration
-├── Protector.Infrastructure/ ← All analyzers and external tools
-│   ├── Analyzers/Http/       ← SQLi, XSS, CORS, CSRF, SSL, Headers
+├── Protector.Infrastructure/ ← All analyzers, tools, persistence
+│   ├── Analyzers/Http/       ← SQLi, XSS, CORS, CSRF, SSL, Headers, OpenRedirect
 │   ├── Analyzers/Static/     ← Roslyn (C#), React regex
 │   ├── Analyzers/Httpx/      ← httpx wrapper
 │   ├── Analyzers/Feroxbuster/← feroxbuster wrapper
 │   ├── Analyzers/Nuclei/     ← Nuclei wrapper
 │   ├── Analyzers/Semgrep/    ← semgrep wrapper
 │   ├── Crawler/              ← BFS web crawler
-│   └── Enrichers/            ← Ollama AI enrichment
+│   ├── Enrichers/            ← Ollama AI enrichment
+│   ├── Persistence/          ← EF Core + SQL Server (scan history)
+│   └── Services/             ← ScanHistoryService, RepoScanService
 ├── Protector.API/            ← ASP.NET Core Web API + SignalR
-├── Protector.CLI/            ← Command line interface
-├── Protector.Tests/          ← 21 unit tests
+├── Protector.CLI/            ← Command line interface + CI mode
+├── Protector.Tests/          ← 46 tests (unit + integration + E2E)
 └── protector-web/            ← React + TypeScript frontend
 ```
+
+### Test Pyramid
+| Level | Count | Speed | When |
+|---|---|---|---|
+| **Unit** | 28 | < 1s | Every CI push |
+| **Integration** | 5 | ~2s | Manual |
+| **E2E** | 5 | ~5s | Manual |
 
 ---
 
@@ -113,11 +140,12 @@ V-Scan/
 |---|---|
 | **ASP.NET Core** | Web API |
 | **SignalR** | Real-time scan progress to frontend |
+| **Entity Framework Core 8** | Scan history persistence |
+| **SQL Server / InMemory** | Database (SQL Server in prod, InMemory in dev) |
 | **Microsoft.CodeAnalysis (Roslyn)** | C# source code AST analysis |
 | **HtmlAgilityPack** | HTML parsing for CSRF/XSS checks |
-| **xUnit + FluentAssertions + NSubstitute** | Unit testing |
+| **xUnit + FluentAssertions + NSubstitute** | 46 tests across 3 pyramid levels |
 | **Spectre.Console** | Rich CLI output |
-| **Microsoft.Extensions.DependencyInjection** | Dependency injection |
 
 ### Frontend
 | Technology | Purpose |
@@ -178,10 +206,21 @@ ollama pull phi3:mini
 # 3. Ollama runs automatically in background
 ```
 
+### Database Setup (optional — for scan history)
+```bash
+# Set connection string via User Secrets (never committed to git)
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" \
+  "Server=(localdb)\mssqllocaldb;Database=VScan;Trusted_Connection=True;" \
+  --project Protector.API
+
+# Without connection string → uses InMemory database (history lost on restart)
+```
+
 ---
 
-## Running the Web UI
+## Running
 
+### Web UI
 ```bash
 # Terminal 1 — Start the API
 dotnet run --project Protector.API --launch-profile http
@@ -190,12 +229,10 @@ dotnet run --project Protector.API --launch-profile http
 cd protector-web
 npm run dev
 
-# Open in browser
-# http://localhost:5173
+# Open http://localhost:5173
 ```
 
-## Running the CLI
-
+### CLI
 ```bash
 # Basic HTTP scan
 dotnet run --project Protector.CLI -- --url https://example.com
@@ -206,13 +243,22 @@ dotnet run --project Protector.CLI -- --url https://example.com --source ./path/
 # Deep scan (includes Nuclei)
 dotnet run --project Protector.CLI -- --url https://example.com --mode Deep
 
-# Save HTML report
-dotnet run --project Protector.CLI -- --url https://example.com --report html --output ./reports
+# CI mode — analyze changed files only (used by GitHub Action)
+dotnet run --project Protector.CLI -- --source . --changed-files "src/Controllers/Auth.cs" --output-file results.json
 ```
 
-## Running Tests
-
+### Tests
 ```bash
+# Unit tests only (fast — used in CI)
+dotnet test --filter "Category!=Integration&Category!=E2E"
+
+# Integration tests
+dotnet test --filter "Category=Integration"
+
+# E2E tests
+dotnet test --filter "Category=E2E"
+
+# All tests
 dotnet test
 ```
 
@@ -223,15 +269,16 @@ dotnet test
 This project uses **GitFlow**:
 
 ```
-main        ← stable releases only
+main        ← stable releases, auto-deploys to GitHub Pages
 develop     ← integration branch
 feature/*   ← individual features, merged via PR
+fix/*       ← bug fixes
 ```
 
-All PRs require CI to pass (build + 21 tests) before merging.
+All PRs require CI to pass (build + unit tests) before merging.
 
 ---
 
 ## License
 
-MIT — free for personal and commercial use.
+Polyform Non-Commercial — free for personal and educational use.
