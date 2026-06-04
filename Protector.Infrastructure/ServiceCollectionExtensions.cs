@@ -69,6 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVulnerabilityAnalyzer, CorsAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, CsrfAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, SslAnalyzer>();
+        services.AddScoped<IVulnerabilityAnalyzer, OpenRedirectAnalyzer>();
 
         // httpx — fast tech fingerprinting, active in Standard + Deep
         if (HttpxDownloader.IsInstalled)
