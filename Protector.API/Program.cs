@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Protector.API.Hubs;
+using Protector.API.Services;
 using Protector.Infrastructure;
 using Protector.Infrastructure.Persistence;
 
@@ -10,6 +11,10 @@ builder.Services.AddControllers();
 
 // SignalR — real-time communication with React
 builder.Services.AddSignalR();
+
+// Scan state — IMemoryCache gives thread-safety + automatic TTL (no static dictionaries)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IScanStateStore, ScanStateStore>();
 
 // All our scan services (analyzers, crawler, use case, database)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
