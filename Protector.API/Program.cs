@@ -33,11 +33,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-apply migrations on startup (SQL Server only, skip InMemory)
+// Auto-apply migrations on startup — only when using a real relational database
 if (!string.IsNullOrEmpty(connectionString))
 {
     using var scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
 }
 
 app.UseCors("ReactApp");
