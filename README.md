@@ -228,10 +228,10 @@ develop     ← integration branch
 feature/*   ← individual features, merged via PR
 ```
 
-All PRs require CI to pass (build + 21 tests) before merging.
+All PRs require CI to pass (build + unit tests) before merging.
 
 ---
 
 ## License
 
-MIT — free for personal and commercial use.
+[Polyform Noncommercial](LICENSE) — free for personal and educational use.

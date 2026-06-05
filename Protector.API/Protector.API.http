@@ -1,6 +1,19 @@
 @Protector.API_HostAddress = http://localhost:5153
 
-GET {{Protector.API_HostAddress}}/weatherforecast/
+GET {{Protector.API_HostAddress}}/api/history
 Accept: application/json
 
 ###
+
+POST {{Protector.API_HostAddress}}/api/scan
+Content-Type: application/json
+
+{
+  "url": "https://example.com",
+  "mode": "Quick",
+  "timeoutSeconds": 8
+}
+
+###
+
+DELETE {{Protector.API_HostAddress}}/api/history/00000000-0000-0000-0000-000000000000

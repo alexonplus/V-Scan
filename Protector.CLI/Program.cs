@@ -44,13 +44,84 @@ if (args.Contains("--install-nuclei"))
     return 0;
 }
 
-// Parse arguments: --url, --source, --report, --output, --depth, --timeout
+// Parse arguments
 var url = GetArg(args, "--url");
 var source = GetArg(args, "--source");
 var report = GetArg(args, "--report") ?? "html";
 var output = GetArg(args, "--output") ?? "./reports";
 var depth = int.TryParse(GetArg(args, "--depth"), out var d) ? d : 3;
 var timeout = int.TryParse(GetArg(args, "--timeout"), out var t) ? t : 10;
+var changedFiles = GetArg(args, "--changed-files");
+var outputFile = GetArg(args, "--output-file");
+var ciMode = args.Contains("--ci") || changedFiles is not null;
+
+// CI mode — static analysis only on changed files, output JSON for GitHub Action
+if (ciMode && source is not null)
+{
+    var ciServices = new ServiceCollection();
+    ciServices.AddProtector();
+    var ciProvider = ciServices.BuildServiceProvider();
+
+    var files = changedFiles?.Split(',', StringSplitOptions.RemoveEmptyEntries)
+        .Select(f => Path.Combine(source, f.Trim()))
+        .Where(File.Exists)
+        .ToList() ?? [];
+
+    if (files.Count == 0)
+    {
+        AnsiConsole.MarkupLine("[yellow]No changed files to analyze.[/]");
+        var empty = new { vulnerabilities = Array.Empty<object>() };
+        if (outputFile is not null)
+            await File.WriteAllTextAsync(outputFile, System.Text.Json.JsonSerializer.Serialize(empty));
+        return 0;
+    }
+
+    AnsiConsole.MarkupLine($"[cyan]V-Scan CI:[/] Analyzing {files.Count} changed file(s)...");
+
+    var analyzers = ciProvider.GetServices<Protector.Domain.Interfaces.IStaticCodeAnalyzer>();
+    var allVulns = new List<Protector.Domain.Entities.Vulnerability>();
+
+    foreach (var file in files)
+    {
+        foreach (var analyzer in analyzers)
+        {
+            var vulns = await analyzer.AnalyzeFileAsync(file);
+            allVulns.AddRange(vulns);
+        }
+    }
+
+    foreach (var v in allVulns)
+        AnsiConsole.MarkupLine($"  [{(v.Severity == Protector.Domain.Enums.Severity.Critical ? "red" : "yellow")}]{v.Severity}[/] {Markup.Escape(v.Title)} — {Markup.Escape(v.FilePath ?? "")}");
+
+    var jsonResult = new
+    {
+        vulnerabilities = allVulns.Select(v => new
+        {
+            title = v.Title,
+            description = v.Description,
+            severity = v.Severity.ToString(),
+            category = v.Category.ToString(),
+            filePath = v.FilePath,
+            lineNumber = v.LineNumber,
+            remediation = v.Remediation,
+            cweId = v.CweId
+        })
+    };
+
+    var json = System.Text.Json.JsonSerializer.Serialize(jsonResult,
+        new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    if (outputFile is not null)
+        await File.WriteAllTextAsync(outputFile, json);
+    else
+        Console.WriteLine(json);
+
+    var criticalOrHigh = allVulns.Count(v =>
+        v.Severity == Protector.Domain.Enums.Severity.Critical ||
+        v.Severity == Protector.Domain.Enums.Severity.High);
+
+    return criticalOrHigh > 0 ? 1 : 0;
+}
 
 if (url is null)
 {

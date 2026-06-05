@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Protector.API.Hubs;
+using Protector.API.Services;
 using Protector.Infrastructure;
 using Protector.Infrastructure.Persistence;
 
@@ -10,6 +11,10 @@ builder.Services.AddControllers();
 
 // SignalR — real-time communication with React
 builder.Services.AddSignalR();
+
+// Scan state — IMemoryCache gives thread-safety + automatic TTL (no static dictionaries)
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IScanStateStore, ScanStateStore>();
 
 // All our scan services (analyzers, crawler, use case, database)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -28,18 +33,41 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-apply migrations on startup (SQL Server only, skip InMemory)
+// Auto-apply migrations on startup — only when using a real relational database
 if (!string.IsNullOrEmpty(connectionString))
 {
     using var scope = app.Services.CreateScope();
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (db.Database.IsRelational())
+        db.Database.Migrate();
 }
 
 app.UseCors("ReactApp");
 app.UseAuthorization();
+
+// Security headers — fixes findings from V-Scan self-scan
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["X-XSS-Protection"] = "1; mode=block";
+    headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+        "connect-src 'self' ws://localhost:* wss://localhost:*";
+    // HSTS only in production — localhost doesn't support HTTPS by default
+    if (!context.Request.Host.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase))
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    await next();
+});
+
 app.MapControllers();
 
 // SignalR hub endpoint — React connects here for real-time progress
 app.MapHub<ScanHub>("/hubs/scan");
 
 app.Run();
+
+// Needed for WebApplicationFactory in E2E tests
+public partial class Program { }

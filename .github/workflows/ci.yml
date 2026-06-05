@@ -17,11 +17,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Install .NET 8 SDK
-      - name: Setup .NET 8
+      # 2. Install .NET 8 and 9 SDKs — global.json pins 9.x locally, projects target net8.0
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: |
+            8.0.x
+            9.0.x
 
       # 3. Restore NuGet packages (cached between runs for speed)
       - name: Restore dependencies
@@ -31,6 +33,6 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      # 5. Run all tests in Protector.Tests — fails if any test fails
+      # 5. Run all tests — unit + integration (InMemory) + E2E (WebApplicationFactory)
       - name: Run tests
         run: dotnet test --no-build --configuration Release --verbosity normal

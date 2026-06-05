@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Clock, Trash2, ExternalLink, Shield, ChevronDown, ChevronUp } from 'lucide-react'
+import { Clock, Trash2, ExternalLink, Shield, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react'
 
 interface HistorySession {
   id: string
@@ -16,7 +16,7 @@ interface HistorySession {
   riskScore: number
 }
 
-const API = 'http://localhost:5285'
+const API = 'http://localhost:5153'
 
 const severityColor = (count: number, type: 'critical' | 'high' | 'medium' | 'low') => {
   if (count === 0) return 'text-gray-500'
@@ -39,6 +39,8 @@ export function HistoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [editNotes, setEditNotes] = useState('')
 
   const load = async () => {
     setLoading(true)
@@ -55,6 +57,21 @@ export function HistoryPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleEditStart = (s: HistorySession) => {
+    setEditing(s.id)
+    setEditNotes((s as any).notes ?? '')
+  }
+
+  const handleEditSave = async (id: string) => {
+    await fetch(`${API}/api/history/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: editNotes })
+    })
+    setSessions(prev => prev.map(s => s.id === id ? { ...s, notes: editNotes } as any : s))
+    setEditing(null)
+  }
 
   const handleDelete = async (id: string) => {
     setDeleting(id)
@@ -139,9 +156,14 @@ export function HistoryPage() {
                   onClick={() => setExpanded(expanded === s.id ? null : s.id)}
                   className="p-2 text-gray-400 hover:text-white rounded-lg hover:bg-gray-700"
                 >
-                  {expanded === s.id
-                    ? <ChevronUp className="w-4 h-4" />
-                    : <ChevronDown className="w-4 h-4" />}
+                  {expanded === s.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => handleEditStart(s)}
+                  className="p-2 text-gray-500 hover:text-indigo-400 rounded-lg hover:bg-gray-700"
+                  title="Add notes"
+                >
+                  <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleDelete(s.id)}
@@ -152,6 +174,24 @@ export function HistoryPage() {
                 </button>
               </div>
             </div>
+
+            {editing === s.id && (
+              <div className="border-t border-gray-700 p-4 flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  placeholder="Add notes about this scan..."
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+                <button onClick={() => handleEditSave(s.id)} className="p-2 text-green-400 hover:bg-gray-700 rounded-lg">
+                  <Check className="w-4 h-4" />
+                </button>
+                <button onClick={() => setEditing(null)} className="p-2 text-gray-500 hover:bg-gray-700 rounded-lg">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {expanded === s.id && (
               <ScanDetail id={s.id} />

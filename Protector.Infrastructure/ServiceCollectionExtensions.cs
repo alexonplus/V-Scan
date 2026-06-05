@@ -12,6 +12,7 @@ using Protector.Infrastructure.Crawler;
 using Protector.Infrastructure.Enrichers;
 using Protector.Infrastructure.Persistence;
 using Protector.Infrastructure.Persistence.Repositories;
+using Protector.Infrastructure.Services;
 
 namespace Protector.Infrastructure;
 
@@ -29,7 +30,19 @@ public static class ServiceCollectionExtensions
         else
             services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase("VScanDev"));
 
+        // Generic repository — open generic registration so IGenericRepository<T> resolves for any entity
+        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         services.AddScoped<IScanSessionRepository, ScanSessionRepository>();
+        services.AddScoped<IScanHistoryService, ScanHistoryService>();
+        services.AddScoped<IRepoScanService, RepoScanService>();
+
+        // GitHub API client — for repo scanner, no auth = 60 req/hour
+        services.AddHttpClient("github", client =>
+        {
+            client.BaseAddress = new Uri("https://api.github.com/");
+            client.DefaultRequestHeaders.Add("User-Agent", "V-Scan/1.0");
+            client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+        });
 
         // Scanner client — for HTTP vulnerability checks, 15s timeout
         services.AddHttpClient("scanner", client =>
@@ -58,6 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVulnerabilityAnalyzer, CorsAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, CsrfAnalyzer>();
         services.AddScoped<IVulnerabilityAnalyzer, SslAnalyzer>();
+        services.AddScoped<IVulnerabilityAnalyzer, OpenRedirectAnalyzer>();
 
         // httpx — fast tech fingerprinting, active in Standard + Deep
         if (HttpxDownloader.IsInstalled)

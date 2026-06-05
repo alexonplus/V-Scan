@@ -1,0 +1,22 @@
+# Add this file to your repo as .github/workflows/security.yml
+# V-Scan will analyze changed files on every PR
+
+name: Security Analysis
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  vscan:
+    name: V-Scan Security Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: alexonplus/V-Scan@main
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-severity: High
