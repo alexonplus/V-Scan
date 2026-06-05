@@ -25,7 +25,7 @@ export default function App() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<Severity | null>(null)
   const [scanMode, setScanMode] = useState<'Quick' | 'Standard' | 'Deep'>('Standard')
-  const { status, progress, result, ollamaOnline, stages, startScan, reset } = useScan()
+  const { status, progress, result, ollamaOnline, stages, aiStatus, startScan, analyzeWithAi, reset } = useScan()
   const terminalEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -175,11 +175,32 @@ export default function App() {
                   </div>
                   <div className="space-y-3">
                     <label className="flex items-center gap-2 text-[11px] font-black text-white/40 uppercase tracking-[0.2em] ml-2">Source Code Path <span className="text-white/20 normal-case tracking-normal font-normal">(optional)</span></label>
-                    <div className="relative group">
-                      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-secondary/0 via-neon-secondary to-neon-secondary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
-                      <Cpu className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-secondary transition-colors" />
-                      <input type="text" value={sourcePath} onChange={e => setSourcePath(e.target.value)} placeholder="C:\path\to\project"
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                    <div className="relative group flex gap-2">
+                      <div className="relative flex-1">
+                        <div className="absolute inset-x-0 bottom-0 h-[2px] bg-gradient-to-r from-neon-secondary/0 via-neon-secondary to-neon-secondary/0 scale-x-0 group-focus-within:scale-x-100 transition-transform duration-500" />
+                        <Cpu className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-white/20 group-focus-within:text-neon-secondary transition-colors" />
+                        <input type="text" value={sourcePath} onChange={e => setSourcePath(e.target.value)} placeholder="C:\path\to\project"
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl py-5 pl-14 pr-6 text-white text-lg font-medium focus:outline-none focus:bg-white/10 transition-all placeholder:text-white/10 group-hover:border-white/20" />
+                      </div>
+                      <label
+                        title="Browse folder"
+                        className="flex items-center justify-center px-4 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 hover:border-white/20 transition-all text-white/40 hover:text-neon-secondary"
+                      >
+                        <Search className="w-5 h-5" />
+                        <input
+                          type="file"
+                          className="hidden"
+                          {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
+                          onChange={e => {
+                            const files = e.target.files
+                            if (files && files.length > 0) {
+                              const firstFile = files[0] as File & { webkitRelativePath: string }
+                              const folderName = firstFile.webkitRelativePath.split('/')[0]
+                              setSourcePath(folderName)
+                            }
+                          }}
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>
@@ -215,15 +236,35 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center pt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                   <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(0,255,157,0.4)' }} whileTap={{ scale: 0.98 }} type="submit"
-                    className="group relative px-16 py-6 bg-neon-primary rounded-2xl text-[#020203] font-black uppercase tracking-[0.3em] overflow-hidden shadow-2xl shadow-neon-primary/20 btn-glow-primary">
+                    className="group relative px-12 py-5 bg-neon-primary rounded-2xl text-[#020203] font-black uppercase tracking-[0.3em] overflow-hidden shadow-2xl shadow-neon-primary/20 btn-glow-primary">
                     <span className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="relative flex items-center gap-3 text-sm">
                       <Zap className="w-5 h-5 fill-current" />
                       Execute Scan
                     </span>
                   </motion.button>
+
+                  {ollamaOnline && (
+                    <motion.button
+                      whileHover={{ scale: 1.02, boxShadow: '0 0 35px rgba(0,209,255,0.3)' }}
+                      whileTap={{ scale: 0.98 }}
+                      type="button"
+                      onClick={() => {
+                        if (url.trim()) {
+                          startScan(url.trim(), sourcePath.trim() || undefined, scanMode)
+                          setTimeout(() => analyzeWithAi(), 100)
+                        }
+                      }}
+                      className="group relative px-8 py-5 glass-card border border-neon-secondary/40 rounded-2xl text-neon-secondary font-black uppercase tracking-[0.2em] overflow-hidden hover:border-neon-secondary/70 transition-all"
+                    >
+                      <span className="relative flex items-center gap-2 text-sm">
+                        <Cpu className="w-4 h-4" />
+                        Scan + Local AI
+                      </span>
+                    </motion.button>
+                  )}
                 </div>
               </form>
             </motion.div>
@@ -383,7 +424,30 @@ export default function App() {
                 </div>
               </div>
 
-              {/* AI Report — shown prominently when Ollama is available */}
+              {/* AI Analysis — manual trigger button */}
+              {!result.aiReport && (
+                <div className="glass-card rounded-2xl p-6 border border-neon-primary/20 flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-semibold flex items-center gap-2">
+                      <Cpu className="w-5 h-5 text-neon-primary" />
+                      AI Security Analysis
+                    </div>
+                    <p className="text-white/40 text-sm mt-1">
+                      {ollamaOnline
+                        ? 'Get AI-powered explanations and recommendations for each vulnerability'
+                        : 'Ollama is not running — start it to enable AI analysis'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={analyzeWithAi}
+                    disabled={!ollamaOnline || aiStatus === 'running'}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-neon-primary/10 border border-neon-primary/30 text-neon-primary rounded-xl font-semibold hover:bg-neon-primary/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Activity className="w-4 h-4" />
+                    {aiStatus === 'running' ? 'Analyzing...' : 'Analyze with AI'}
+                  </button>
+                </div>
+              )}
               {result.aiReport && <AiReportBlock report={result.aiReport} />}
 
               {/* Meta */}

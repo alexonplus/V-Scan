@@ -24,7 +24,9 @@ export function useScan() {
   const [error, setError] = useState<string | null>(null)
   const [ollamaOnline, setOllamaOnline] = useState<boolean | null>(null)
   const [stages, setStages] = useState<Record<string, StageInfo>>({})
+  const [aiStatus, setAiStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const connectionRef = useRef<signalR.HubConnection | null>(null)
+  const scanIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     checkOllamaStatus().then(setOllamaOnline)
@@ -50,6 +52,7 @@ export function useScan() {
       }
 
       const { scanId } = await response.json()
+      scanIdRef.current = scanId
 
       const connection = new signalR.HubConnectionBuilder()
         .withUrl(`${API_URL}/hubs/scan`)
@@ -82,7 +85,18 @@ export function useScan() {
       connection.on('Completed', (data: ScanResult) => {
         setResult(data)
         setStatus('completed')
-        connection.stop()
+        // Don't stop connection — needed for AI analysis later
+      })
+
+      connection.on('AiCompleted', (data: ScanResult) => {
+        setResult(data)
+        setAiStatus('done')
+        setStages(prev => ({ ...prev, ai: { done: 1, total: 1, message: 'AI analysis complete' } }))
+      })
+
+      connection.on('AiError', (msg: string) => {
+        setAiStatus('error')
+        setError(`AI error: ${msg}`)
       })
 
       connection.on('Error', (msg: string) => {
@@ -100,6 +114,17 @@ export function useScan() {
     }
   }, [])
 
+  const analyzeWithAi = useCallback(async () => {
+    if (!scanIdRef.current) return
+    setAiStatus('running')
+    setStages(prev => ({ ...prev, ai: { done: 0, total: 1, message: 'AI analysis starting...' } }))
+    try {
+      await fetch(`${API_URL}/api/scan/${scanIdRef.current}/analyze`, { method: 'POST' })
+    } catch {
+      setAiStatus('error')
+    }
+  }, [])
+
   const reset = useCallback(() => {
     connectionRef.current?.stop()
     setStatus('idle')
@@ -107,7 +132,9 @@ export function useScan() {
     setResult(null)
     setError(null)
     setStages({})
+    setAiStatus('idle')
+    scanIdRef.current = null
   }, [])
 
-  return { status, progress, result, error, ollamaOnline, stages, startScan, reset }
+  return { status, progress, result, error, ollamaOnline, stages, aiStatus, startScan, analyzeWithAi, reset }
 }
