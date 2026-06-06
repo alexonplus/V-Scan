@@ -1,0 +1,36 @@
+name: CI
+
+# When to run: on every push to any branch, and on PRs targeting develop or main
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  build-and-test:
+    name: Build & Test (.NET 8)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Download the repository code onto the CI machine
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Install .NET 8 SDK
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # 3. Restore NuGet packages (cached between runs for speed)
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # 4. Build the entire solution — fails if any project has compile errors
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      # 5. Run all tests in Protector.Tests — fails if any test fails
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --verbosity normal

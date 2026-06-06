@@ -33,13 +33,26 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Auto-apply migrations on startup — only when using a real relational database
+// Auto-apply migrations on startup
 if (!string.IsNullOrEmpty(connectionString))
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (db.Database.IsRelational())
-        db.Database.Migrate();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        if (db.Database.IsRelational())
+        {
+            Console.WriteLine("Applying migrations...");
+            db.Database.Migrate();
+            Console.WriteLine("Migrations applied successfully");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"ERROR during migration: {ex.Message}");
+        Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        throw;
+    }
 }
 
 app.UseCors("ReactApp");
