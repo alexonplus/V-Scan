@@ -1,12 +1,14 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Protector.Infrastructure.Persistence.Migrations
 {
+    /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
@@ -24,7 +26,8 @@ namespace Protector.Infrastructure.Persistence.Migrations
                     Medium = table.Column<int>(type: "int", nullable: false),
                     Low = table.Column<int>(type: "int", nullable: false),
                     Info = table.Column<int>(type: "int", nullable: false),
-                    RiskScore = table.Column<int>(type: "int", nullable: false)
+                    RiskScore = table.Column<int>(type: "int", nullable: false),
+                    Notes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -68,10 +71,14 @@ namespace Protector.Infrastructure.Persistence.Migrations
                 column: "ScanSessionId");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(name: "VulnerabilityRecords");
-            migrationBuilder.DropTable(name: "ScanSessions");
+            migrationBuilder.DropTable(
+                name: "VulnerabilityRecords");
+
+            migrationBuilder.DropTable(
+                name: "ScanSessions");
         }
     }
 }

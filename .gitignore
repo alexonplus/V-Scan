@@ -49,3 +49,6 @@ Thumbs.db
 /reports/
 **/reports/*.html
 **/reports/*.json
+
+
+.vite
